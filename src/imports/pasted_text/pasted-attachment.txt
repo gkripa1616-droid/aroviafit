@@ -1,0 +1,761 @@
+Create a complete, production-quality fashion e-commerce website UI inspired by the attached reference screenshots.
+
+IMPORTANT:
+- Recreate the overall layout, spacing, visual hierarchy, navigation structure, product-grid behavior and premium fashion e-commerce feel shown in the references.
+- Do NOT make it look like a generic Shopify template.
+- The website must feel like a real premium Indian fashion/activewear brand.
+- Use the reference screenshots as the primary visual direction.
+- Keep the design clean, minimal, editorial and premium.
+- Make every section responsive for desktop, tablet and mobile.
+- Do not omit sections.
+- Do not create a simplified landing page. Build a COMPLETE ecommerce website.
+
+BRAND:
+Brand name: "VYORA"
+Tagline: "Move. Live. Repeat."
+Category: Premium women's activewear, athleisure and everyday comfort wear.
+
+DESIGN LANGUAGE:
+- Minimal premium fashion aesthetic
+- White/off-white background
+- Black typography
+- Subtle grey borders
+- Large editorial photography
+- Spacious layouts
+- Modern sans-serif typography
+- Strong bold section headings
+- Very subtle animations
+- Rounded corners only where appropriate
+- Product imagery should dominate the UI
+- Avoid excessive gradients
+- Avoid flashy colors
+- Use small accent labels such as NEW, RESTOCKED, BESTSELLER, NEW COLOURS
+- Premium Indian D2C fashion brand feeling
+
+==================================================
+1. TOP PROMOTIONAL BAR
+==================================================
+
+At the very top create a thin black promotional announcement bar.
+
+Example:
+"⚡ EXTRA ₹150 OFF ON PURCHASE OF 2 FAVES ⚡ | USE CODE: VYORA150"
+
+Include:
+- centered text
+- small font
+- lightning icons
+- coupon code visually emphasized
+- responsive behavior
+
+==================================================
+2. MAIN NAVIGATION
+==================================================
+
+Create a sticky/floating premium navigation.
+
+Desktop:
+
+LEFT:
+- Women's ▼
+- Shop All
+- Bestsellers
+- New
+- Trending
+- Store Locator
+
+CENTER:
+- VYORA logo/wordmark
+
+RIGHT:
+- Search icon
+- Account icon
+- App icon/text
+- Wishlist icon with notification badge
+- Shopping bag/cart icon with item count
+
+Below the main navigation create a gender switch:
+
+Women
+Men [NEW]
+
+Women should be active with an underline.
+
+Navigation must remain clean and compact.
+
+When hovering/clicking Women's, open a mega menu containing:
+
+SHOP
+- New Arrivals
+- Bestsellers
+- All Products
+- Trending
+
+CATEGORIES
+- Bottoms
+- Tops
+- Innerwear
+- Swimwear
+- Travel
+- Co-ords
+- Dresses
+
+SHOP BY ACTIVITY
+- Gym
+- Yoga
+- Running
+- Travel
+- Everyday
+
+==================================================
+3. HERO SECTION
+==================================================
+
+Create a full-width editorial hero banner similar to the reference.
+
+Use a large lifestyle fashion image showing 2-3 women wearing coordinated premium activewear/athleisure clothing.
+
+Image should occupy almost the entire viewport width.
+
+Add a dark subtle gradient overlay on one side.
+
+Hero content:
+
+"VYORA MOVE"
+
+"Looks Like Style.
+Feels Like Freedom."
+
+CTA:
+"SHOP NOW"
+
+Secondary CTA:
+"EXPLORE NEW"
+
+Add carousel indicators at bottom-right.
+
+Hero should support 3 slides:
+
+SLIDE 1:
+"Move Without Limits"
+"Performance wear designed for everyday movement."
+
+SLIDE 2:
+"Everyday. Elevated."
+"From morning workouts to coffee runs."
+
+SLIDE 3:
+"New Season / New Energy"
+"Discover the latest collection."
+
+Use large editorial photography.
+
+==================================================
+4. FEATURED COLLECTION STRIP
+==================================================
+
+Immediately below hero create a horizontal featured collection/banner section.
+
+Create 3 large editorial cards:
+
+ALL-DAY WEAR
+"From meetings to workouts"
+
+NEW LAUNCHES
+"Hot off the press, just in."
+
+ACTIVE ESSENTIALS
+"Made for every move"
+
+Each card should have:
+- lifestyle image
+- text overlay
+- CTA
+- subtle hover zoom
+
+==================================================
+5. SHOP BY CATEGORY
+==================================================
+
+Create a centered section:
+
+"Shop by Category"
+
+Below it create category tabs:
+
+Bestsellers
+New
+Travel
+Bottoms
+Innerwear
+Swimwear
+Tops
+
+Active tab:
+Black background + white text.
+
+Inactive tabs:
+White background + thin grey border.
+
+Clicking a tab should dynamically change the product grid.
+
+==================================================
+6. PRODUCT GRID
+==================================================
+
+Create a premium responsive product grid.
+
+Desktop:
+3 products per row.
+
+Tablet:
+2 products per row.
+
+Mobile:
+2 products per row.
+
+Each product card must contain:
+
+- Large product image
+- Wishlist heart icon in top-right
+- Small badge in top-left:
+  NEW
+  RESTOCKED
+  BESTSELLER
+  NEW COLOURS
+- Product name
+- Star rating
+- Review count
+- Original price
+- Sale price
+- "Best Price ₹XXX with coupon"
+- Color swatches
+- "+X" additional colors indicator
+- Black full-width "ADD TO BAG" button
+
+Example products:
+
+Ultimate Flare Pants
+₹999
+₹1,999
+★ 4.8
+608 reviews
+
+Ultimate Straight Pants
+₹999
+₹1,999
+★ 4.8
+842 reviews
+
+Work-To-Wine Wide Dart Pants
+₹1,699
+₹1,899
+★ 4.8
+
+Cloud Korean Pants
+₹1,999
+₹2,499
+★ 4.8
+
+Ultimate Flare Pants
+₹1,499
+₹2,299
+★ 4.9
+
+Ultimate Leggings
+₹1,199
+₹2,299
+★ 4.9
+
+Use realistic fashion product photography.
+
+Images must be large, clean and consistent in aspect ratio.
+
+==================================================
+7. BESTSELLERS SECTION
+==================================================
+
+Heading:
+"Bestsellers"
+
+Show 6-8 products.
+
+Include:
+"VIEW ALL"
+
+button.
+
+Products should have realistic:
+- names
+- prices
+- ratings
+- reviews
+- color options
+- badges
+
+==================================================
+8. NEW LAUNCHES
+==================================================
+
+Create another section:
+
+"New Launches"
+
+Show 6-8 products.
+
+Example:
+
+Flared Denim
+Wide Leg Denim
+Cloud Korean Pants
+Cloud Box Pleated Pants
+Built-In Bra Top
+V-Neck Racerback Top
+Cloud Baby Tee
+Ultimate Dress
+Ultimate Half Zip
+Ultimate Crop Jacket
+
+Each card must have "NEW" badge where appropriate.
+
+==================================================
+9. TRAVEL COLLECTION
+==================================================
+
+Create section:
+
+"Travel"
+
+Subtitle:
+"Made to move with you."
+
+Show products such as:
+
+AirMelt Flare Pants
+BareButter Straight Pants
+BareButter Pullover
+RibSupreme Flare Pants
+RibSupreme Tank
+RibSupreme Jacket
+AirMelt Shorts
+AirMelt Crop Tee
+RibSupreme Wide Leg Pants
+
+Add:
+"VIEW ALL"
+
+==================================================
+10. BOTTOMS
+==================================================
+
+Heading:
+"Bottoms"
+
+Show a product carousel/grid.
+
+Categories include:
+- Flare Pants
+- Straight Pants
+- Wide Leg Pants
+- Korean Pants
+- Leggings
+- Shorts
+
+==================================================
+11. INNERWEAR
+==================================================
+
+Heading:
+"Innerwear"
+
+Show products:
+
+Absolute Invisible Bra
+Power Up Sports Bra
+Ultimate Comfort Sports Bra
+Zip-Up Sports Bra
+Ultimate Support Sports Bra
+Strappy Racerback Sports Bra
+
+Include product ratings and color swatches.
+
+==================================================
+12. SWIMWEAR
+==================================================
+
+Heading:
+"Swimwear"
+
+Create premium editorial product cards.
+
+Products:
+- Swim Dress Racerback
+- Bliss-style Swim Dress
+- Full Sleeve Swim Dress
+- One-piece Swimsuit
+
+Use elegant lifestyle photography.
+
+==================================================
+13. EDITORIAL BRAND BANNER
+==================================================
+
+Create a large full-width dark editorial banner.
+
+Huge typography:
+
+"LET'S #KEEPMOVING"
+
+Use subtle oversized typography in the background.
+
+Minimal layout.
+
+==================================================
+14. BRAND STORY
+==================================================
+
+Create:
+
+"Designed for real life."
+
+Short brand statement about clothing designed for movement, comfort and everyday life.
+
+Use a large lifestyle image beside the text.
+
+CTA:
+"OUR STORY"
+
+==================================================
+15. REVIEWS
+==================================================
+
+Create customer review section.
+
+Heading:
+"Love From Our Community"
+
+Show review cards with:
+
+★★★★★
+
+"Absolutely love the fit and comfort."
+
+Customer name
+Verified Buyer
+
+Include horizontal scrolling review cards.
+
+==================================================
+16. INSTAGRAM / SOCIAL SECTION
+==================================================
+
+Heading:
+
+"Follow @vyora"
+
+Create a 5-6 image Instagram-style grid.
+
+Add Instagram icon.
+
+==================================================
+17. NEWSLETTER
+==================================================
+
+Create minimal newsletter section:
+
+"Get first dibs."
+
+"Sign up for new launches, exclusive drops and offers."
+
+Email input:
+"Your email address"
+
+Button:
+"SUBSCRIBE"
+
+==================================================
+18. FOOTER
+==================================================
+
+Use a large black/dark footer similar to the reference.
+
+At top:
+
+"LET'S #KEEPMOVING"
+
+Then 3-4 columns.
+
+ABOUT
+- Our Story
+- Stores Near You
+- Terms of Service
+- Privacy Policy
+
+HELP
+- Order Tracking
+- Return / Exchange
+- Returns & Refunds
+- Shipping Policy
+- Sitemap
+- FAQ
+- Contact Us
+
+SHOP
+- Shop All
+- Bestsellers
+- New Launches
+- Bottoms
+- Tops
+- Innerwear
+- Swimwear
+
+CONTACT
+VYORA Fashion Private Limited
+India
+
+support@vyora.in
+
+Social icons:
+Instagram
+Facebook
+YouTube
+WhatsApp
+X
+
+Bottom footer:
+© 2026 VYORA. All Rights Reserved.
+
+Links:
+Contact Us
+Refer & Earn
+Rewards
+Reviews
+Terms
+Refund Policy
+
+==================================================
+18. ECOMMERCE INTERACTIONS
+==================================================
+
+The prototype should behave like a real ecommerce website.
+
+Implement interactions for:
+
+- Search
+- Wishlist
+- Account
+- Cart
+- Add to Bag
+- Product cards
+- Category tabs
+- Product carousel
+- Hero carousel
+- Mega menu
+- Filters
+- Sort
+- Quantity selector
+- Size selector
+- Color selector
+- Coupon input
+- Checkout CTA
+
+Add-to-Bag should open a right-side cart drawer.
+
+Cart drawer should show:
+- Product image
+- Product name
+- Selected size
+- Selected color
+- Quantity
+- Price
+- Remove
+- Subtotal
+- Coupon
+- Checkout button
+
+==================================================
+19. PRODUCT DETAIL PAGE
+==================================================
+
+Create a complete PDP.
+
+Layout:
+
+LEFT:
+Large product image gallery.
+
+RIGHT:
+Product name
+Rating + reviews
+Price
+MRP
+Discount
+Best price with coupon
+
+Color:
+color swatches
+
+Size:
+XS S M L XL XXL
+
+"Size Guide"
+
+Quantity selector
+
+BLACK:
+"ADD TO BAG"
+
+Secondary:
+"BUY NOW"
+
+Below:
+
+Product Details
+Fabric & Care
+Fit
+Shipping
+Returns
+Reviews
+
+Add "You May Also Like" product carousel.
+
+==================================================
+20. COLLECTION PAGE
+==================================================
+
+Create collection page with:
+
+Breadcrumb
+
+Large collection title
+
+Collection description
+
+Filter button
+
+Sort dropdown
+
+Product count
+
+Sidebar filters on desktop:
+
+Category
+Size
+Color
+Price
+Rating
+Availability
+
+Mobile should use a bottom filter/sort bar.
+
+==================================================
+21. SEARCH PAGE
+==================================================
+
+Create search overlay/page.
+
+Large search input.
+
+"Search products..."
+
+Show:
+Recent Searches
+Popular Searches
+Suggested Products
+
+==================================================
+22. CART + CHECKOUT UI
+==================================================
+
+Create complete cart page.
+
+Show:
+Cart items
+Quantity
+Price
+Discount
+Coupon
+Shipping
+Total
+
+CTA:
+"PROCEED TO CHECKOUT"
+
+Checkout UI should be clean, minimal and premium.
+
+==================================================
+23. RESPONSIVE DESIGN
+==================================================
+
+Desktop:
+- Max content width approximately 1280-1440px
+- Large photography
+- 3 product columns
+- Spacious sections
+
+Tablet:
+- 2 product columns
+- compressed navigation
+
+Mobile:
+- compact header
+- hamburger menu
+- centered logo
+- search + cart icons
+- 2 product columns
+- horizontally scrollable category tabs
+- mobile filter/sort bar
+- responsive hero image
+- no horizontal overflow
+
+==================================================
+24. VISUAL DETAILS
+==================================================
+
+Use:
+- premium modern sans-serif typography
+- bold black headings
+- clean body text
+- subtle grey borders
+- generous whitespace
+- sharp editorial photography
+- consistent 3:4 product image ratio
+- black primary buttons
+- white secondary buttons
+- subtle hover animations
+- smooth transitions
+- image zoom on product hover
+- heart animation when wishlist is clicked
+- cart drawer slide animation
+- sticky header
+
+Do NOT use:
+- excessive rounded cards
+- neon colors
+- childish graphics
+- excessive gradients
+- generic startup SaaS styling
+- excessive shadows
+- cluttered layouts
+- oversized rounded buttons
+- random icons
+
+==================================================
+25. FINAL QUALITY REQUIREMENT
+==================================================
+
+The final result must look like a real premium Indian D2C fashion ecommerce brand, not a UI concept.
+
+Prioritize:
+1. Visual similarity to the supplied references
+2. Premium ecommerce hierarchy
+3. Product discovery
+4. High-quality product cards
+5. Clean navigation
+6. Strong editorial imagery
+7. Conversion-focused CTAs
+8. Responsive behavior
+9. Realistic ecommerce interactions
+10. Consistent spacing and typography
+
+Generate all required screens/components in one coherent design system.
