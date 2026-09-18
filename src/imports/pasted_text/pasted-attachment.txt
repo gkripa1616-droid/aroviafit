@@ -11,7 +11,7 @@ IMPORTANT:
 - Do not create a simplified landing page. Build a COMPLETE ecommerce website.
 
 BRAND:
-Brand name: "VYORA"
+Brand name: "Arovia Fit"
 Tagline: "Move. Live. Repeat."
 Category: Premium women's activewear, athleisure and everyday comfort wear.
 
@@ -39,7 +39,7 @@ DESIGN LANGUAGE:
 At the very top create a thin black promotional announcement bar.
 
 Example:
-"⚡ EXTRA ₹150 OFF ON PURCHASE OF 2 FAVES ⚡ | USE CODE: VYORA150"
+"⚡ EXTRA ₹150 OFF ON PURCHASE OF 2 FAVES ⚡ | USE CODE: AROVIA150"
 
 Include:
 - centered text
@@ -65,7 +65,7 @@ LEFT:
 - Store Locator
 
 CENTER:
-- VYORA logo/wordmark
+- Arovia Fit logo/wordmark
 
 RIGHT:
 - Search icon
