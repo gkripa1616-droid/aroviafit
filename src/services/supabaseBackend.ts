@@ -9,6 +9,7 @@ export interface DBProduct {
   reviews: number
   badge: string
   imgId: string
+  images?: string[]
   colors: string[]
   category: string
   description?: string
@@ -88,6 +89,7 @@ export async function fetchProductsFromDB(): Promise<DBProduct[] | null> {
       reviews: Number(p.reviews),
       badge: p.badge || '',
       imgId: p.img_id,
+      images: Array.isArray(p.images) ? p.images : [],
       colors: Array.isArray(p.colors) ? p.colors : [],
       category: p.category,
       description: p.description || '',
@@ -111,6 +113,7 @@ export async function createOrUpdateProductInDB(product: DBProduct): Promise<boo
       reviews: product.reviews,
       badge: product.badge,
       img_id: product.imgId,
+      images: product.images || [],
       colors: product.colors,
       category: product.category,
       description: product.description || '',
@@ -123,6 +126,42 @@ export async function createOrUpdateProductInDB(product: DBProduct): Promise<boo
     return true
   } catch (err) {
     console.error('Save product exception:', err)
+    return false
+  }
+}
+
+export async function deleteProductFromDB(productId: number): Promise<boolean> {
+  if (!isSupabaseConfigured() || !supabase) return false
+  try {
+    const { error } = await supabase.from('products').delete().eq('id', productId)
+    return !error
+  } catch {
+    return false
+  }
+}
+
+export async function bulkCreateProductsInDB(products: DBProduct[]): Promise<boolean> {
+  if (!isSupabaseConfigured() || !supabase) return false
+  try {
+    const payload = products.map(product => ({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      mrp: product.mrp,
+      rating: product.rating || 4.8,
+      reviews: product.reviews || 0,
+      badge: product.badge || 'NEW',
+      img_id: product.imgId,
+      images: product.images || [],
+      colors: product.colors,
+      category: product.category,
+      description: product.description || '',
+      stock: product.stock ?? 100
+    }))
+    const { error } = await supabase.from('products').upsert(payload)
+    return !error
+  } catch (err) {
+    console.error('Bulk save products error:', err)
     return false
   }
 }

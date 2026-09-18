@@ -18,7 +18,9 @@ import {
   createOrderInDB,
   createPaymentRecordInDB,
   updateOrderStatusInDB,
-  createOrUpdateProductInDB
+  createOrUpdateProductInDB,
+  deleteProductFromDB,
+  bulkCreateProductsInDB
 } from '../services/supabaseBackend'
 
 export function useRealtimeBackend(initialProducts: DBProduct[], initialReviews: DBReview[]) {
@@ -107,7 +109,10 @@ export function useRealtimeBackend(initialProducts: DBProduct[], initialReviews:
       (payload) => {
         setLastRealtimeEvent(`Product updated live: ${payload.eventType}`)
         logActivity(`Product ${payload.eventType} live`)
-        if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+        if (payload.eventType === 'DELETE') {
+          const oldId = Number((payload.old as any)?.id)
+          if (oldId) setProducts(prev => prev.filter(p => p.id !== oldId))
+        } else if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
           const newP = payload.new as any
           const formatted: DBProduct = {
             id: Number(newP.id),
@@ -118,6 +123,7 @@ export function useRealtimeBackend(initialProducts: DBProduct[], initialReviews:
             reviews: Number(newP.reviews),
             badge: newP.badge || '',
             imgId: newP.img_id,
+            images: Array.isArray(newP.images) ? newP.images : [],
             colors: Array.isArray(newP.colors) ? newP.colors : [],
             category: newP.category,
             description: newP.description || '',
@@ -366,6 +372,28 @@ export function useRealtimeBackend(initialProducts: DBProduct[], initialReviews:
     logActivity(`Admin saved product "${prod.name}"`)
   }, [configured])
 
+  const deleteProduct = useCallback(async (productId: number) => {
+    if (configured) {
+      await deleteProductFromDB(productId)
+    } else {
+      setProducts(prev => prev.filter(p => p.id !== productId))
+    }
+    logActivity(`Admin deleted product ID #${productId}`)
+  }, [configured])
+
+  const bulkSaveProducts = useCallback(async (prods: DBProduct[]) => {
+    if (configured) {
+      await bulkCreateProductsInDB(prods)
+    } else {
+      setProducts(prev => {
+        const existingIds = new Set(prev.map(p => p.id))
+        const newProds = prods.filter(p => !existingIds.has(p.id))
+        return [...prev, ...newProds]
+      })
+    }
+    logActivity(`Admin bulk imported ${prods.length} products`)
+  }, [configured])
+
   return {
     products,
     reviews,
@@ -384,6 +412,9 @@ export function useRealtimeBackend(initialProducts: DBProduct[], initialReviews:
     placeOrder,
     processRazorpayPayment,
     updateOrderStatus,
-    saveProduct
+    saveProduct,
+    deleteProduct,
+    bulkSaveProducts
   }
 }
+

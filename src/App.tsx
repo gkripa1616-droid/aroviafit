@@ -14,6 +14,7 @@ interface Product {
   reviews: number
   badge: string
   imgId: string
+  images?: string[]
   colors: string[]
   category: string
   description?: string
@@ -29,6 +30,8 @@ interface CartItem {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const img = (id: string, w = 600, h = 800) =>
+  !id ? 'https://images.unsplash.com/photo-1600696491085-19dbbeb4f8c1?w=600&h=800&fit=crop' :
+  (id.startsWith('http') || id.startsWith('data:')) ? id :
   `https://images.unsplash.com/${id}?w=${w}&h=${h}&fit=crop&auto=format`
 
 // ─── Data Fallbacks ──────────────────────────────────────────────────────────
@@ -1996,6 +1999,9 @@ export default function App() {
 
   // Dynamic SEO Title & Meta Manager
   useEffect(() => {
+    if (window.location.pathname === '/admin' || window.location.hash === '#admin') {
+      setPage('admin')
+    }
     if (page === 'home') {
       document.title = 'Arovia Fit | Premium Women Activewear, Flare Pants & Athleisure'
     } else if (page === 'collection') {
@@ -2028,7 +2034,9 @@ export default function App() {
     placeOrder,
     processRazorpayPayment,
     updateOrderStatus,
-    saveProduct
+    saveProduct,
+    deleteProduct,
+    bulkSaveProducts
   } = useRealtimeBackend(ALL_PRODUCTS, REVIEWS)
 
   // Format products list
@@ -2041,6 +2049,7 @@ export default function App() {
     reviews: p.reviews,
     badge: p.badge,
     imgId: p.imgId,
+    images: p.images,
     colors: p.colors,
     category: p.category,
     description: p.description,
@@ -2112,6 +2121,11 @@ export default function App() {
 
   function navigateTo(p: Page) {
     setPage(p)
+    if (p === 'admin') {
+      window.history.pushState(null, '', '/admin')
+    } else if (p === 'home') {
+      window.history.pushState(null, '', '/')
+    }
     window.scrollTo(0, 0)
   }
 
@@ -2218,6 +2232,8 @@ export default function App() {
               isConnected={isConnected}
               onUpdateStatus={updateOrderStatus}
               onSaveProduct={saveProduct}
+              onDeleteProduct={deleteProduct}
+              onBulkSaveProducts={bulkSaveProducts}
               onBack={() => navigateTo('home')}
             />
             <Footer onPageChange={navigateTo} />
