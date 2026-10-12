@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, lazy, Suspense } from 'react'
 import { useRealtimeBackend } from './hooks/useRealtimeBackend'
 import { DBProduct, DBReview, DBOrder, DBPayment, DBCategory } from './services/supabaseBackend'
+import { LIVE_PRODUCTS } from './services/catalogData'
 
 const AdminPanel = lazy(() => import('./components/AdminPanel'))
 const SizeGuideModal = lazy(() => import('./components/SizeGuideModal'))
@@ -35,32 +36,19 @@ interface CartItem {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+export const isValidImg = (id: string | undefined | null): boolean => {
+  if (!id || typeof id !== 'string') return false
+  if (id.startsWith('data:') && id.length < 200) return false
+  return true
+}
+
 const img = (id: string, _w = 600, _h = 800) => {
-  if (!id) return ''
+  if (!isValidImg(id)) return ''
   return id
 }
 
 // ─── Data State (Persistent & Synchronized Catalog) ──────────────────────────
-const ALL_PRODUCTS: Product[] = [
-  { id: 1, name: 'Ultimate Flare Pants', price: 999, mrp: 1999, rating: 4.8, reviews: 608, badge: 'BESTSELLER', imgId: 'photo-1600696491085-19dbbeb4f8c1', colors: ['#111', '#6b7280', '#7c3aed'], category: 'Bottoms', subCategory: 'Flare Pants', sub_category: 'Flare Pants', description: 'Our best-selling flare pants crafted from ultra-soft 4-way stretch fabric. Flattering high-rise waist, wide leg opening, and moisture-wicking finish.', stock: 150 },
-  { id: 2, name: 'Ultimate Straight Pants', price: 999, mrp: 1999, rating: 4.8, reviews: 842, badge: 'BESTSELLER', imgId: 'photo-1617372591382-4ecd2bf8bbc3', colors: ['#111', '#9ca3af', '#b45309'], category: 'Bottoms', subCategory: 'Straight Pants', sub_category: 'Straight Pants', description: 'Effortlessly versatile straight-leg pants that transition from the studio to the streets. Buttery smooth fabric with 4-way stretch.', stock: 120 },
-  { id: 3, name: 'Work-To-Wine Wide Dart Pants', price: 1699, mrp: 1899, rating: 4.8, reviews: 312, badge: 'NEW', imgId: 'photo-1597586309225-a5db6dd03b3c', colors: ['#111', '#d97706'], category: 'Bottoms', subCategory: 'Wide Dart Pants', sub_category: 'Wide Dart Pants', description: 'Designed for the woman who does it all. Wide-leg silhouette with dart detailing for a structured yet comfortable fit.', stock: 80 },
-  { id: 4, name: 'Cloud Korean Pants', price: 1999, mrp: 2499, rating: 4.8, reviews: 203, badge: 'NEW', imgId: 'photo-1597586309204-ab40c927296d', colors: ['#111', '#6b7280', '#0ea5e9'], category: 'Bottoms', subCategory: 'Korean Pants', sub_category: 'Korean Pants', description: 'Inspired by Korean street style. Relaxed silhouette, ultra-light fabric, elastic waist with drawstring for the perfect fit every time.', stock: 95 },
-  { id: 5, name: 'Ultimate Leggings', price: 1199, mrp: 2299, rating: 4.9, reviews: 1205, badge: 'BESTSELLER', imgId: 'photo-1565118520546-8f6a088d6894', colors: ['#111', '#374151', '#7c3aed', '#0ea5e9'], category: 'Bottoms', subCategory: 'Leggings', sub_category: 'Leggings', description: 'The legging that started it all. Squat-proof, non-see-through, buttery soft fabric that moves with you all day.', stock: 300 },
-  { id: 6, name: 'Power Up Sports Bra', price: 799, mrp: 1299, rating: 4.7, reviews: 445, badge: 'RESTOCKED', imgId: 'photo-1597586740347-a5a9d9a93e85', colors: ['#c53030', '#111', '#6b7280'], category: 'Innerwear', subCategory: 'Sports Bra', sub_category: 'Sports Bra', description: 'Medium-to-high support sports bra with removable cups, cross-back design, and wide underband for all-day comfort.', stock: 200 },
-  { id: 7, name: 'Built-In Bra Crop Top', price: 899, mrp: 1499, rating: 4.8, reviews: 367, badge: 'NEW', imgId: 'photo-1579473755852-abe535c52ff0', colors: ['#f5f5f4', '#111'], category: 'Tops', subCategory: 'Crop Tops', sub_category: 'Crop Tops', description: 'Two-in-one crop top with built-in shelf bra. Light support, relaxed fit, and breathable fabric perfect for low-intensity workouts.', stock: 110 },
-  { id: 8, name: 'V-Neck Racerback Top', price: 699, mrp: 1199, rating: 4.7, reviews: 289, badge: 'NEW COLOURS', imgId: 'photo-1552196527-90dc99d938bc', colors: ['#111', '#b45309', '#0ea5e9', '#7c3aed'], category: 'Tops', subCategory: 'Racerback Tops', sub_category: 'Racerback Tops', description: 'Classic racerback design with V-neckline. Quick-dry, odor-resistant, and available in an expanded colour palette.', stock: 140 },
-  { id: 9, name: 'AirMelt Flare Pants', price: 1599, mrp: 2199, rating: 4.9, reviews: 534, badge: 'BESTSELLER', imgId: 'photo-1597586740716-27ca9e73029a', colors: ['#111', '#3b82f6'], category: 'Travel', subCategory: 'AirMelt Series', sub_category: 'AirMelt Series', description: 'Lightweight, packable flare pants perfect for travel. Wrinkle-resistant, quick-dry, and surprisingly comfortable on long flights.', stock: 175 },
-  { id: 10, name: 'BareButter Straight Pants', price: 1799, mrp: 2499, rating: 4.8, reviews: 412, badge: 'NEW', imgId: 'photo-1597460927195-a6c823cc0d0e', colors: ['#111', '#3b82f6', '#6b7280'], category: 'Travel', subCategory: 'BareButter Series', sub_category: 'BareButter Series', description: 'Butter-soft straight pants designed for the modern traveller. Adjustable waistband and hidden pockets for your essentials.', stock: 130 },
-  { id: 11, name: 'Absolute Invisible Bra', price: 699, mrp: 1199, rating: 4.9, reviews: 892, badge: 'BESTSELLER', imgId: 'photo-1579473755852-abe535c52ff0', colors: ['#f5f5f4', '#111', '#fcd34d'], category: 'Innerwear', subCategory: 'Invisible Bra', sub_category: 'Invisible Bra', description: 'Seamless, invisible bra with no-show construction under any outfit. Gentle support with full coverage moulded cups.', stock: 210 },
-  { id: 12, name: 'Ultimate Comfort Sports Bra', price: 799, mrp: 1399, rating: 4.8, reviews: 623, badge: 'BESTSELLER', imgId: 'photo-1597586309225-a5db6dd03b3c', colors: ['#111', '#c53030', '#0ea5e9'], category: 'Innerwear', subCategory: 'Comfort Bra', sub_category: 'Comfort Bra', description: "Our most popular sports bra. Light to medium support, padded cups, and wide straps that won't dig in.", stock: 190 },
-  { id: 13, name: 'Cloud Baby Tee', price: 599, mrp: 999, rating: 4.6, reviews: 156, badge: 'NEW', imgId: 'photo-1597586740347-a5a9d9a93e85', colors: ['#f5f5f4', '#fcd34d', '#c53030'], category: 'Tops', subCategory: 'Baby Tees', sub_category: 'Baby Tees', description: 'Relaxed baby tee cut from cloud-soft jersey. Cropped silhouette, raw hem, and effortless fit for everyday wear.', stock: 85 },
-  { id: 14, name: 'Swim Dress Racerback', price: 1999, mrp: 2799, rating: 4.8, reviews: 178, badge: 'NEW', imgId: 'photo-1617372591382-4ecd2bf8bbc3', colors: ['#111', '#0ea5e9', '#7c3aed'], category: 'Swimwear', subCategory: 'Swim Dresses', sub_category: 'Swim Dresses', description: 'Flattering racerback swim dress with built-in UPF 50+ protection. Chlorine-resistant fabric for long-lasting colour.', stock: 65 },
-  { id: 15, name: 'One-Piece Swimsuit', price: 2199, mrp: 2999, rating: 4.7, reviews: 89, badge: 'NEW', imgId: 'photo-1597586309204-ab40c927296d', colors: ['#111', '#c53030'], category: 'Swimwear', subCategory: 'One-Piece Swimsuits', sub_category: 'One-Piece Swimsuits', description: 'Sculpting one-piece with tummy control panel, adjustable straps, and a sophisticated minimalist design.', stock: 50 },
-  { id: 16, name: 'Full Sleeve Swim Dress', price: 2499, mrp: 3299, rating: 4.9, reviews: 67, badge: 'NEW', imgId: 'photo-1565118520546-8f6a088d6894', colors: ['#111', '#6b7280'], category: 'Swimwear', subCategory: 'Full Sleeve Swim Dresses', sub_category: 'Full Sleeve Swim Dresses', description: 'Elegant full-sleeve swim dress with UPF 50+ protection. Perfect for conservative swimmers and beach walks alike.', stock: 45 },
-  { id: 17, name: 'BareButter Pullover', price: 1299, mrp: 1999, rating: 4.8, reviews: 234, badge: 'NEW', imgId: 'photo-1552196527-90dc99d938bc', colors: ['#f5f5f4', '#111', '#d97706'], category: 'Travel', subCategory: 'BareButter Series', sub_category: 'BareButter Series', description: 'Ultra-soft pullover perfect for layering on travels. Lightweight, packable, and wrinkle-free for the modern nomad.', stock: 90 },
-  { id: 18, name: 'RibSupreme Flare Pants', price: 1499, mrp: 2199, rating: 4.7, reviews: 189, badge: 'RESTOCKED', imgId: 'photo-1600696491085-19dbbeb4f8c1', colors: ['#111', '#6b7280', '#7c3aed'], category: 'Travel', subCategory: 'BareButter Series', sub_category: 'BareButter Series', description: 'Ribbed flare pants with a premium hand-feel. 4-way stretch, high-waist, and side pockets for practicality.', stock: 115 },
-]
+const ALL_PRODUCTS: Product[] = LIVE_PRODUCTS
 
 const REVIEWS: DBReview[] = [
   { name: 'Priya S.', text: 'Absolutely love the fit and comfort. These leggings are worth every rupee! Have ordered 3 pairs already.', rating: 5, product_name: 'Ultimate Leggings' },
@@ -121,18 +109,27 @@ function ProductCard({
   return (
     <div className="group">
       <div className="relative aspect-[3/4] overflow-hidden bg-gray-100 cursor-pointer" onClick={() => onView(p)}>
-        {p.imgId ? (
-          <img
-            src={img(p.imgId)}
-            alt={p.name}
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
-          />
-        ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-900 text-white p-4 text-center">
-            <span className="text-lg font-black tracking-widest uppercase">AROVIA</span>
-            <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider mt-1">{p.category || 'ACTIVEWEAR'}</span>
-          </div>
-        )}
+        {(() => {
+          const displayImg = isValidImg(p.imgId) ? p.imgId : (p.images?.find(isValidImg) || '')
+          if (displayImg) {
+            return (
+              <img
+                src={img(displayImg)}
+                alt={p.name}
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none'
+                }}
+              />
+            )
+          }
+          return (
+            <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-900 text-white p-4 text-center">
+              <span className="text-lg font-black tracking-widest uppercase">AROVIA</span>
+              <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider mt-1">{p.name || p.category || 'ACTIVEWEAR'}</span>
+            </div>
+          )
+        })()}
         <Badge text={p.badge} />
         <button
           onClick={e => {
@@ -338,8 +335,10 @@ function MegaMenu({
     ? categories.map(c => c.name)
     : ['Bottoms', 'Tops', 'Innerwear', 'Swimwear', 'Travel']
 
-  const bottomsImg = products?.find(p => p.category?.toLowerCase() === 'bottoms' && p.imgId)?.imgId || ''
-  const topsImg = products?.find(p => (p.category?.toLowerCase() === 'tops' || p.category?.toLowerCase() === 'innerwear') && p.imgId)?.imgId || ''
+  const bottomsImg = products?.find(p => p.category?.toLowerCase() === 'bottoms' && isValidImg(p.imgId))?.imgId
+    || products?.find(p => isValidImg(p.imgId))?.imgId || ''
+  const topsImg = products?.find(p => (p.category?.toLowerCase() === 'tops' || p.category?.toLowerCase() === 'innerwear') && isValidImg(p.imgId))?.imgId
+    || products?.filter(p => isValidImg(p.imgId))?.[1]?.imgId || ''
 
   return (
     <div className="absolute top-full left-0 right-0 bg-white border-b border-gray-100 shadow-xl z-40 py-10 animate-in fade-in slide-in-from-top-2 duration-200">
@@ -1662,7 +1661,9 @@ function PDPPage({
 }) {
   const [selectedSize, setSelectedSize] = useState('M')
   const [selectedColor, setSelectedColor] = useState(product.colors[0] ?? '#111')
-  const [activeImageId, setActiveImageId] = useState(product.imgId)
+  const [activeImageId, setActiveImageId] = useState(() => {
+    return isValidImg(product.imgId) ? product.imgId : (product.images?.find(isValidImg) || '')
+  })
   const [pincode, setPincode] = useState('')
   const [deliveryMsg, setDeliveryMsg] = useState('')
   const [openAccordion, setOpenAccordion] = useState<'fabric' | 'fit' | 'shipping' | null>('fabric')
@@ -1676,10 +1677,8 @@ function PDPPage({
   const [revSubmitted, setRevSubmitted] = useState(false)
 
   const galleryImages = useMemo(() => {
-    if (product.images && product.images.length > 0) {
-      return product.images.filter(Boolean)
-    }
-    return product.imgId ? [product.imgId] : []
+    const list = product.images && product.images.length > 0 ? product.images : [product.imgId]
+    return list.filter(isValidImg)
   }, [product])
 
   const productReviews = reviews.filter(r => r.product_id === product.id || r.product_name === product.name)
@@ -3014,6 +3013,54 @@ export default function App() {
         onTrackOpen={() => handleOpenTracker()}
       />
       )}
+
+      {/* Floating 1-Click Sync/Export to GitHub Button for instant real catalog capture */}
+      <div className="fixed bottom-4 left-4 z-50">
+        <button
+          onClick={async () => {
+            // Read directly from IndexedDB to capture full 100% resolution photos
+            let prodsToExport = dbProducts
+            try {
+              if (window.indexedDB) {
+                const db: IDBDatabase = await new Promise((resolve, reject) => {
+                  const req = window.indexedDB.open('arovia_fit_idb', 1)
+                  req.onsuccess = () => resolve(req.result)
+                  req.onerror = () => reject(req.error)
+                })
+                const idbProds: any[] = await new Promise((resolve, reject) => {
+                  const tx = db.transaction('products', 'readonly')
+                  const store = tx.objectStore('products')
+                  const req = store.getAll()
+                  req.onsuccess = () => resolve(req.result || [])
+                  req.onerror = () => reject(req.error)
+                })
+                if (idbProds && idbProds.length > 0) {
+                  prodsToExport = idbProds
+                }
+              }
+            } catch (err) {
+              console.warn('IDB export fallback to dbProducts:', err)
+            }
+
+            const dataToExport = {
+              products: prodsToExport,
+              categories: categories
+            }
+            const blob = new Blob([JSON.stringify(dataToExport, null, 2)], { type: 'application/json' })
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = 'live_catalog.json'
+            a.click()
+            URL.revokeObjectURL(url)
+            showToast('📥 Full resolution live_catalog.json downloaded!')
+          }}
+          className="bg-black hover:bg-zinc-800 text-white text-xs font-bold px-3.5 py-2 rounded-full shadow-2xl border border-white/20 flex items-center gap-2 cursor-pointer transition-transform active:scale-95"
+          title="Download the full resolution real local products and categories"
+        >
+          <span>🚀 1-Click Sync Real Data</span>
+        </button>
+      </div>
 
       {/* Main View Container */}
       <main className={page === 'admin' ? 'flex-1' : 'flex-1 pt-24'}>

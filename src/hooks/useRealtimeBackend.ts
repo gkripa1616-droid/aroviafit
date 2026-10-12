@@ -43,7 +43,8 @@ import {
   getStoredCategories,
   getSyncStoredCategories,
   saveStoredCategories,
-  onBroadcastEvent
+  onBroadcastEvent,
+  sanitizeProduct
 } from '../services/storageService'
 import { bookBlitzshipShipment } from '../services/blitzshipService'
 
@@ -599,11 +600,12 @@ export function useRealtimeBackend(initialProducts: DBProduct[], initialReviews:
   }, [configured])
 
   const saveProduct = useCallback(async (prod: DBProduct) => {
+    const cleanProd = sanitizeProduct(prod)
     setProducts(prev => {
-      const idx = prev.findIndex(p => Number(p.id) === Number(prod.id))
+      const idx = prev.findIndex(p => Number(p.id) === Number(cleanProd.id))
       const nextProducts = idx >= 0
-        ? prev.map((p, i) => i === idx ? prod : p)
-        : [...prev, prod]
+        ? prev.map((p, i) => i === idx ? cleanProd : p)
+        : [...prev, cleanProd]
       // Save synchronously inside the updater so nextProducts is guaranteed non-empty
       saveStoredProducts(nextProducts)
       return nextProducts
@@ -773,12 +775,13 @@ export function useRealtimeBackend(initialProducts: DBProduct[], initialReviews:
       nextProducts = prev.map(p => {
         if (productIds.includes(p.id)) {
           const existingImages = Array.isArray(p.images) ? p.images : [p.imgId].filter(Boolean)
-          const merged = Array.from(new Set([...existingImages, ...newImages]))
-          return {
+          const merged = Array.from(new Set([...newImages, ...existingImages]))
+          const nextImgId = setAsThumbnail && newImages[0] ? newImages[0] : (p.imgId || newImages[0] || '')
+          return sanitizeProduct({
             ...p,
-            imgId: setAsThumbnail && newImages[0] ? newImages[0] : p.imgId,
+            imgId: nextImgId,
             images: merged
-          }
+          })
         }
         return p
       })

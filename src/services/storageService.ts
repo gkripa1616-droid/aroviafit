@@ -88,14 +88,21 @@ export function onBroadcastEvent(event: string, callback: (payload?: any) => voi
   }
 }
 
+// Helper to sanitize corrupt/truncated image data
+export function sanitizeProduct(p: DBProduct): DBProduct {
+  const isCorrupted = (str?: string) => Boolean(str && str.startsWith('data:') && str.length < 200)
+  const validImgs = (p.images || []).filter(u => u && !isCorrupted(u))
+  const validImgId = p.imgId && !isCorrupted(p.imgId) ? p.imgId : (validImgs[0] || '')
+  return {
+    ...p,
+    imgId: validImgId,
+    images: validImgs.length > 0 ? validImgs : (validImgId ? [validImgId] : [])
+  }
+}
+
 // ─── Products Storage ────────────────────────────────────────────────────────
 export async function getStoredProducts(): Promise<DBProduct[]> {
-  // 1. Try in-memory first
-  if (memoryProducts && memoryProducts.length > 0) {
-    return memoryProducts
-  }
-
-  // 2. Try IndexedDB first (source of truth for large data / images)
+  // 1. Try IndexedDB first (source of truth for large data / images, unlimited storage)
   const db = await openIndexedDB()
   if (db) {
     try {
@@ -107,14 +114,20 @@ export async function getStoredProducts(): Promise<DBProduct[]> {
         req.onerror = () => reject(req.error)
       })
       if (prods && prods.length > 0) {
-        memoryProducts = prods
-        // Ensure localStorage also has a copy (sanitized if needed)
-        safeSaveProductsToLocalStorage(prods)
-        return prods
+        const sanitized = prods.map(sanitizeProduct)
+        memoryProducts = sanitized
+        // Ensure localStorage also has a lightweight sync copy
+        safeSaveProductsToLocalStorage(sanitized)
+        return sanitized
       }
     } catch (e) {
       console.warn('IndexedDB read products failed:', e)
     }
+  }
+
+  // 2. Try in-memory cache
+  if (memoryProducts && memoryProducts.length > 0) {
+    return memoryProducts.map(sanitizeProduct)
   }
 
   // 3. Fallback to localStorage
@@ -124,8 +137,9 @@ export async function getStoredProducts(): Promise<DBProduct[]> {
       if (saved) {
         const parsed = JSON.parse(saved)
         if (Array.isArray(parsed) && parsed.length > 0) {
-          memoryProducts = parsed
-          return parsed
+          const sanitized = parsed.map(sanitizeProduct)
+          memoryProducts = sanitized
+          return sanitized
         }
       }
     } catch (e) {}
@@ -135,24 +149,30 @@ export async function getStoredProducts(): Promise<DBProduct[]> {
 }
 
 export function getSyncStoredProducts(fallback: DBProduct[]): DBProduct[] {
-  if (memoryProducts && memoryProducts.length > 0) return memoryProducts
+  if (memoryProducts && memoryProducts.length > 0) {
+    return memoryProducts.map(sanitizeProduct)
+  }
   if (typeof window !== 'undefined') {
     try {
       const saved = localStorage.getItem('arovia_products')
       if (saved) {
         const parsed = JSON.parse(saved)
         if (Array.isArray(parsed) && parsed.length > 0) {
-          memoryProducts = parsed
-          return parsed
+          const sanitized = parsed.map(sanitizeProduct)
+          memoryProducts = sanitized
+          return sanitized
         }
       }
     } catch (e) {}
   }
-  return fallback
+  const cleanFallback = fallback.map(sanitizeProduct)
+  memoryProducts = cleanFallback
+  return cleanFallback
 }
 
 export async function saveStoredProducts(products: DBProduct[]): Promise<void> {
-  memoryProducts = products
+  const cleanProducts = products.map(sanitizeProduct)
+  memoryProducts = cleanProducts
 
   // 1. Save to IndexedDB (Supports 100s of MBs, never throws QuotaExceeded)
   const db = await openIndexedDB()
@@ -162,7 +182,7 @@ export async function saveStoredProducts(products: DBProduct[]): Promise<void> {
         const tx = db.transaction(STORE_PRODUCTS, 'readwrite')
         const store = tx.objectStore(STORE_PRODUCTS)
         store.clear()
-        products.forEach(p => store.put(p))
+        cleanProducts.forEach(p => store.put(p))
         tx.oncomplete = () => resolve()
         tx.onerror = () => reject(tx.error)
       })
@@ -171,11 +191,11 @@ export async function saveStoredProducts(products: DBProduct[]): Promise<void> {
     }
   }
 
-  // 2. Safely sync to localStorage
-  safeSaveProductsToLocalStorage(products)
+  // 2. Safely sync to localStorage (resilient to 5MB quota)
+  safeSaveProductsToLocalStorage(cleanProducts)
 
   // 3. Notify all open tabs & components
-  broadcastEvent('arovia_products_updated', products)
+  broadcastEvent('arovia_products_updated', cleanProducts)
 }
 
 function safeSaveProductsToLocalStorage(products: DBProduct[]) {
@@ -183,17 +203,16 @@ function safeSaveProductsToLocalStorage(products: DBProduct[]) {
   try {
     localStorage.setItem('arovia_products', JSON.stringify(products))
   } catch (e: any) {
-    // If quota exceeded, strip heavy data URLs for localStorage fallback only
-    console.warn('localStorage quota exceeded, saving lightweight version:', e)
+    // If quota exceeded, save a lightweight version with cover image only so localStorage never goes stale!
     try {
       const lightweight = products.map(p => ({
         ...p,
-        // If image is a massive data URL > 100KB, truncate or keep cover preview only in localStorage
-        imgId: p.imgId?.startsWith('data:') && p.imgId.length > 80000 ? p.imgId.slice(0, 100) : p.imgId,
-        images: (p.images || []).map(img => img?.startsWith('data:') && img.length > 80000 ? img.slice(0, 100) : img)
+        images: p.imgId ? [p.imgId] : []
       }))
       localStorage.setItem('arovia_products', JSON.stringify(lightweight))
-    } catch (err) {}
+    } catch (err) {
+      console.warn('localStorage full even for lightweight version, IndexedDB retains complete data')
+    }
   }
 }
 

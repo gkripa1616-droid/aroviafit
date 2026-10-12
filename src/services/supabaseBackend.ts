@@ -57,37 +57,52 @@ export async function uploadImageToSupabase(file: File): Promise<string> {
   return new Promise((resolve) => {
     const reader = new FileReader()
     reader.onload = (e) => {
+      const dataUrl = e.target?.result as string
+      if (!dataUrl) {
+        resolve('')
+        return
+      }
       const imgObj = new Image()
       imgObj.onload = () => {
-        const canvas = document.createElement('canvas')
-        const MAX_WIDTH = 800
-        const MAX_HEIGHT = 1000
-        let width = imgObj.width
-        let height = imgObj.height
+        try {
+          const canvas = document.createElement('canvas')
+          const MAX_WIDTH = 700
+          const MAX_HEIGHT = 900
+          let width = imgObj.width
+          let height = imgObj.height
 
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height = Math.round((height * MAX_WIDTH) / width)
-            width = MAX_WIDTH
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height = Math.round((height * MAX_WIDTH) / width)
+              width = MAX_WIDTH
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width = Math.round((width * MAX_HEIGHT) / height)
+              height = MAX_HEIGHT
+            }
           }
-        } else {
-          if (height > MAX_HEIGHT) {
-            width = Math.round((width * MAX_HEIGHT) / height)
-            height = MAX_HEIGHT
-          }
-        }
 
-        canvas.width = width
-        canvas.height = height
-        const ctx = canvas.getContext('2d')
-        if (ctx) {
-          ctx.drawImage(imgObj, 0, 0, width, height)
-          resolve(canvas.toDataURL('image/jpeg', 0.72))
-        } else {
-          resolve(e.target?.result as string)
+          canvas.width = width
+          canvas.height = height
+          const ctx = canvas.getContext('2d')
+          if (ctx) {
+            ctx.drawImage(imgObj, 0, 0, width, height)
+            resolve(canvas.toDataURL('image/jpeg', 0.70))
+          } else {
+            resolve(dataUrl)
+          }
+        } catch {
+          resolve(dataUrl)
         }
       }
-      imgObj.src = e.target?.result as string
+      imgObj.onerror = () => {
+        resolve(dataUrl)
+      }
+      imgObj.src = dataUrl
+    }
+    reader.onerror = () => {
+      resolve('')
     }
     reader.readAsDataURL(file)
   })
@@ -322,13 +337,18 @@ export async function bulkAttachImagesInDB(
 
 // ─── Dynamic Categories & Subcategories ──────────────────────────────────────
 export const DEFAULT_TAXONOMY: DBCategory[] = [
-  { name: 'Bottoms', subCategories: ['Flare Pants', 'Straight Pants', 'Wide Dart Pants', 'Leggings', 'Korean Pants', 'Shorts'] },
-  { name: 'Innerwear', subCategories: ['Sports Bra', 'Invisible Bra', 'Comfort Bra', 'Seamless Loungewear'] },
-  { name: 'Tops', subCategories: ['Crop Tops', 'Racerback Tops', 'Baby Tees', 'Tank Tops', 'Pullovers'] },
-  { name: 'Travel', subCategories: ['BareButter Series', 'AirMelt Series', 'Airport Sets', 'Travel Pullovers'] },
-  { name: 'Swimwear', subCategories: ['Swim Dresses', 'One-Piece Swimsuits', 'Full Sleeve Swim Dresses', 'Beachwear'] },
-  { name: 'Bestsellers', subCategories: ['Top Trending', 'Community Favourites', 'Restocked Classics'] },
-  { name: 'New Arrivals', subCategories: ['Fresh Drop', 'New Colorways', 'Seasonal Capsule'] }
+  {
+    name: 'AroviaFit Rib Prime Collection',
+    subCategories: ['Crop-top with flair pants']
+  },
+  {
+    name: 'SPORTS BRA WITH GYM SHORTS',
+    subCategories: ['Criss cross bra with gym shorts']
+  },
+  {
+    name: 'CROP TOP ZIPPER BRA WITH YOGA PANTS',
+    subCategories: ['crop tops']
+  }
 ]
 
 export async function fetchCategoriesFromDB(): Promise<DBCategory[] | null> {
