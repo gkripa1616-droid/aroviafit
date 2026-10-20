@@ -283,10 +283,22 @@ export function useRealtimeBackend(initialProducts: DBProduct[], initialReviews:
       }
     }
 
-    loadData()
+    const fallbackTimer = setTimeout(() => {
+      if (isMounted) {
+        setIsConnected(true)
+      }
+    }, 2500)
+
+    loadData().finally(() => {
+      if (isMounted) {
+        clearTimeout(fallbackTimer)
+        setIsConnected(true)
+      }
+    })
 
     return () => {
       isMounted = false
+      clearTimeout(fallbackTimer)
     }
   }, [configured])
 
@@ -983,6 +995,17 @@ export function useRealtimeBackend(initialProducts: DBProduct[], initialReviews:
     logActivity(`Deleted subcategory "${subCategoryName}" from "${categoryName || 'all'}"`)
   }, [configured])
 
+  const bulkSaveCategories = useCallback(async (cats: DBCategory[]) => {
+    setCategories(cats)
+    await saveStoredCategories(cats)
+    if (configured) {
+      try {
+        await saveCategoriesToDB(cats)
+      } catch (e) {}
+    }
+    logActivity(`Bulk saved ${cats.length} categories`)
+  }, [configured])
+
   const deleteReview = useCallback(async (reviewId: string) => {
     setReviews(prev => prev.filter(r => r.id !== reviewId))
     if (configured) {
@@ -1133,6 +1156,7 @@ export function useRealtimeBackend(initialProducts: DBProduct[], initialReviews:
     bulkUpdatePrice,
     bulkDeleteProducts,
     bulkAttachImages,
+    bulkSaveCategories,
     addCategory,
     updateCategory,
     deleteCategory,

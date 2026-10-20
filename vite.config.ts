@@ -35,6 +35,7 @@ export default defineConfig(({ mode }) => {
       figmaErrorOverlayReplay(),
       figmaReactRefreshBoundaryFallback(),
       figmaMakeKitPlugin({ storiesGlob: '/src/**/*.stories.{ts,tsx,js,jsx}' }),
+      catalogSyncPlugin(),
     ],
     resolve: {
       alias: {
@@ -57,6 +58,43 @@ export default defineConfig(({ mode }) => {
     },
   }
 })
+
+function catalogSyncPlugin(): Plugin {
+  return {
+    name: 'catalog-sync-plugin',
+    configureServer(server) {
+      server.middlewares.use('/api/sync-catalog', (req, res) => {
+        if (req.method === 'POST') {
+          let body = ''
+          req.on('data', chunk => { body += chunk })
+          req.on('end', async () => {
+            try {
+              const data = JSON.parse(body)
+              const fs = await import('node:fs')
+              const path = await import('node:path')
+              if (data && Array.isArray(data.products) && Array.isArray(data.categories)) {
+                fs.writeFileSync(path.resolve(import.meta.dirname, './live_catalog.json'), JSON.stringify(data, null, 2), 'utf8')
+                const tsContent = `import { DBProduct, DBCategory } from './supabaseBackend'\n\nexport const LIVE_CATEGORIES: DBCategory[] = ${JSON.stringify(data.categories, null, 2)}\n\nexport const LIVE_PRODUCTS: any[] = ${JSON.stringify(data.products, null, 2)}\n`
+                fs.writeFileSync(path.resolve(import.meta.dirname, './src/services/catalogData.ts'), tsContent, 'utf8')
+                res.writeHead(200, { 'Content-Type': 'application/json' })
+                res.end(JSON.stringify({ success: true, count: data.products.length }))
+                return
+              }
+              res.writeHead(400, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: 'Invalid payload' }))
+            } catch (err: any) {
+              res.writeHead(500, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: err.message }))
+            }
+          })
+          return
+        }
+        res.writeHead(405)
+        res.end()
+      })
+    }
+  }
+}
 
 type FigmaSiteConfiguration = {
   title?: string

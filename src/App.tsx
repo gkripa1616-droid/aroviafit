@@ -2867,6 +2867,7 @@ export default function App() {
     bulkUpdatePrice,
     bulkDeleteProducts,
     bulkAttachImages,
+    bulkSaveCategories,
     addCategory,
     updateCategory,
     deleteCategory,
@@ -2932,6 +2933,39 @@ export default function App() {
     showToast(`Added "${p.name}" (${size}) to your bag`)
     setCartOpen(true)
   }
+
+  // Auto-sync local browser state to project files on localhost
+  useEffect(() => {
+    if (typeof window === 'undefined' || window.location.hostname !== 'localhost') return
+    const timer = setTimeout(async () => {
+      try {
+        let prods = dbProducts
+        if (window.indexedDB) {
+          const db: IDBDatabase = await new Promise((resolve, reject) => {
+            const req = window.indexedDB.open('arovia_fit_idb', 1)
+            req.onsuccess = () => resolve(req.result)
+            req.onerror = () => reject(req.error)
+          })
+          const idbProds: any[] = await new Promise((resolve) => {
+            const tx = db.transaction('products', 'readonly')
+            const store = tx.objectStore('products')
+            const req = store.getAll()
+            req.onsuccess = () => resolve(req.result || [])
+            req.onerror = () => resolve([])
+          })
+          if (idbProds && idbProds.length > 0) prods = idbProds
+        }
+        if (prods.length > 0 && categories.length > 0) {
+          await fetch('/api/sync-catalog', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ products: prods, categories })
+          })
+        }
+      } catch (e) {}
+    }, 2000)
+    return () => clearTimeout(timer)
+  }, [dbProducts.length, categories.length])
 
   // ─── URL Deep Linking & History Navigation ──────────────────────────────────
   useEffect(() => {
@@ -3079,7 +3113,7 @@ export default function App() {
       )}
 
       {/* Floating 1-Click Sync/Export to GitHub Button for instant real catalog capture */}
-      <div className="fixed bottom-4 left-4 z-50">
+      <div className="fixed bottom-4 left-4 z-50 flex items-center gap-2">
         <button
           onClick={async () => {
             // Read directly from IndexedDB to capture full 100% resolution photos
@@ -3110,6 +3144,23 @@ export default function App() {
               products: prodsToExport,
               categories: categories
             }
+
+            // 1. Send directly to local Vite dev server endpoint to write files
+            let apiSynced = false
+            try {
+              const res = await fetch('/api/sync-catalog', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(dataToExport)
+              })
+              if (res.ok) {
+                apiSynced = true
+              }
+            } catch (err) {
+              console.warn('Vite sync endpoint unavailable:', err)
+            }
+
+            // 2. Also download backup json
             const blob = new Blob([JSON.stringify(dataToExport, null, 2)], { type: 'application/json' })
             const url = URL.createObjectURL(blob)
             const a = document.createElement('a')
@@ -3117,13 +3168,56 @@ export default function App() {
             a.download = 'live_catalog.json'
             a.click()
             URL.revokeObjectURL(url)
-            showToast('📥 Full resolution live_catalog.json downloaded!')
+
+            if (apiSynced) {
+              showToast(`🚀 Synced ${dataToExport.products.length} products & ${dataToExport.categories.length} categories to project files! Ready to commit and push!`)
+            } else {
+              showToast('📥 live_catalog.json downloaded! (Replace live_catalog.json in project)')
+            }
           }}
           className="bg-black hover:bg-zinc-800 text-white text-xs font-bold px-3.5 py-2 rounded-full shadow-2xl border border-white/20 flex items-center gap-2 cursor-pointer transition-transform active:scale-95"
-          title="Download the full resolution real local products and categories"
+          title="Sync all local products & categories to project code files"
         >
           <span>🚀 1-Click Sync Real Data</span>
         </button>
+
+        <label
+          className="bg-zinc-900/90 hover:bg-zinc-800 text-zinc-300 hover:text-white text-xs font-medium px-3 py-2 rounded-full shadow-xl border border-zinc-700/60 flex items-center gap-1.5 cursor-pointer transition-colors"
+          title="Import an existing live_catalog.json"
+        >
+          <span>📂 Import JSON</span>
+          <input
+            type="file"
+            accept=".json"
+            className="hidden"
+            onChange={async (e) => {
+              const file = e.target.files?.[0]
+              if (!file) return
+              try {
+                const text = await file.text()
+                const data = JSON.parse(text)
+                if (data && Array.isArray(data.products)) {
+                  // Save to IDB & memory
+                  await bulkSaveProducts(data.products)
+                  if (Array.isArray(data.categories)) {
+                    await bulkSaveCategories(data.categories)
+                  }
+                  // Also write to project files if on localhost
+                  try {
+                    await fetch('/api/sync-catalog', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify(data)
+                    })
+                  } catch (err) {}
+                  showToast(`✅ Successfully imported ${data.products.length} products & ${data.categories?.length || 0} categories!`)
+                }
+              } catch (err: any) {
+                showToast(`❌ Failed to import catalog: ${err.message}`)
+              }
+            }}
+          />
+        </label>
       </div>
 
       {/* Main View Container */}

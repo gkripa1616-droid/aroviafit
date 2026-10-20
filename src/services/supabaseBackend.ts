@@ -340,6 +340,14 @@ export async function bulkAttachImagesInDB(
 // ─── Dynamic Categories & Subcategories ──────────────────────────────────────
 export const DEFAULT_TAXONOMY: DBCategory[] = [
   {
+    name: 'GYM TSHIRTS WITH SHORTS',
+    subCategories: ['GYM TSHIRTS', 'GYM SHORTS']
+  },
+  {
+    name: 'JACKETS',
+    subCategories: []
+  },
+  {
     name: 'AroviaFit Rib Prime Collection',
     subCategories: ['Crop-top with flair pants']
   },
@@ -350,6 +358,18 @@ export const DEFAULT_TAXONOMY: DBCategory[] = [
   {
     name: 'CROP TOP ZIPPER BRA WITH YOGA PANTS',
     subCategories: ['crop tops']
+  },
+  {
+    name: 'GREEN FOREST COLLECTION',
+    subCategories: ['GYM TIGHTS WITH SPORTS BRA']
+  },
+  {
+    name: 'SNOWWHITE COLLECTION',
+    subCategories: ['SNOWWHITE JUMP SUIT']
+  },
+  {
+    name: 'JUMP SUITS',
+    subCategories: ['GREEN FOREST']
   }
 ]
 
