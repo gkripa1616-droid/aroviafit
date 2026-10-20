@@ -91,13 +91,41 @@ export function onBroadcastEvent(event: string, callback: (payload?: any) => voi
 // Helper to sanitize corrupt/truncated image data
 export function sanitizeProduct(p: DBProduct): DBProduct {
   const isCorrupted = (str?: string) => Boolean(str && str.startsWith('data:') && str.length < 200)
-  const validImgs = (p.images || []).filter(u => u && !isCorrupted(u))
+  const validImgs = (Array.isArray(p.images) ? p.images : [p.imgId])
+    .filter(u => u && typeof u === 'string' && !isCorrupted(u))
   const validImgId = p.imgId && !isCorrupted(p.imgId) ? p.imgId : (validImgs[0] || '')
   return {
     ...p,
     imgId: validImgId,
     images: validImgs.length > 0 ? validImgs : (validImgId ? [validImgId] : [])
   }
+}
+
+// Merge products while guaranteeing that multi-photo galleries are never lost or downgraded
+export function mergeProductsPreservingImages(currentList: DBProduct[], incomingList: DBProduct[]): DBProduct[] {
+  const currentMap = new Map<number, DBProduct>()
+  currentList.forEach(p => currentMap.set(Number(p.id), p))
+
+  return incomingList.map(incoming => {
+    const existing = currentMap.get(Number(incoming.id))
+    if (!existing) return sanitizeProduct(incoming)
+
+    const existingImgs = (Array.isArray(existing.images) ? existing.images : [existing.imgId])
+      .filter(u => u && typeof u === 'string' && (!u.startsWith('data:') || u.length >= 200))
+    const incomingImgs = (Array.isArray(incoming.images) ? incoming.images : [incoming.imgId])
+      .filter(u => u && typeof u === 'string' && (!u.startsWith('data:') || u.length >= 200))
+
+    // If incoming has fewer images (e.g. from a quota-limited lightweight sync), retain the richer existing gallery!
+    const effectiveImages = incomingImgs.length >= existingImgs.length ? incomingImgs : existingImgs
+    const effectiveImgId = incoming.imgId || existing.imgId || effectiveImages[0] || ''
+
+    return sanitizeProduct({
+      ...existing,
+      ...incoming,
+      imgId: effectiveImgId,
+      images: effectiveImages.length > 0 ? effectiveImages : (effectiveImgId ? [effectiveImgId] : [])
+    })
+  })
 }
 
 // ─── Products Storage ────────────────────────────────────────────────────────
@@ -115,10 +143,13 @@ export async function getStoredProducts(): Promise<DBProduct[]> {
       })
       if (prods && prods.length > 0) {
         const sanitized = prods.map(sanitizeProduct)
-        memoryProducts = sanitized
-        // Ensure localStorage also has a lightweight sync copy
-        safeSaveProductsToLocalStorage(sanitized)
-        return sanitized
+        // If memory already has richer data, merge preserving images
+        const resolved = memoryProducts && memoryProducts.length > 0
+          ? mergeProductsPreservingImages(memoryProducts, sanitized)
+          : sanitized
+        memoryProducts = resolved
+        safeSaveProductsToLocalStorage(resolved)
+        return resolved
       }
     } catch (e) {
       console.warn('IndexedDB read products failed:', e)
@@ -203,15 +234,15 @@ function safeSaveProductsToLocalStorage(products: DBProduct[]) {
   try {
     localStorage.setItem('arovia_products', JSON.stringify(products))
   } catch (e: any) {
-    // If quota exceeded, save a lightweight version with cover image only so localStorage never goes stale!
+    // If quota exceeded, save a lightweight version with cover image only so localStorage doesn't crash
     try {
       const lightweight = products.map(p => ({
         ...p,
-        images: p.imgId ? [p.imgId] : []
+        images: Array.isArray(p.images) && p.images.length > 0 ? p.images.slice(0, 2) : (p.imgId ? [p.imgId] : [])
       }))
       localStorage.setItem('arovia_products', JSON.stringify(lightweight))
     } catch (err) {
-      console.warn('localStorage full even for lightweight version, IndexedDB retains complete data')
+      console.warn('localStorage full, IndexedDB retains complete data and multi-photo galleries')
     }
   }
 }

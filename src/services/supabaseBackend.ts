@@ -66,8 +66,8 @@ export async function uploadImageToSupabase(file: File): Promise<string> {
       imgObj.onload = () => {
         try {
           const canvas = document.createElement('canvas')
-          const MAX_WIDTH = 700
-          const MAX_HEIGHT = 900
+          const MAX_WIDTH = 650
+          const MAX_HEIGHT = 850
           let width = imgObj.width
           let height = imgObj.height
 
@@ -87,8 +87,10 @@ export async function uploadImageToSupabase(file: File): Promise<string> {
           canvas.height = height
           const ctx = canvas.getContext('2d')
           if (ctx) {
+            ctx.imageSmoothingEnabled = true
+            ctx.imageSmoothingQuality = 'high'
             ctx.drawImage(imgObj, 0, 0, width, height)
-            resolve(canvas.toDataURL('image/jpeg', 0.70))
+            resolve(canvas.toDataURL('image/jpeg', 0.65))
           } else {
             resolve(dataUrl)
           }

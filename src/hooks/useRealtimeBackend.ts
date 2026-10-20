@@ -44,7 +44,8 @@ import {
   getSyncStoredCategories,
   saveStoredCategories,
   onBroadcastEvent,
-  sanitizeProduct
+  sanitizeProduct,
+  mergeProductsPreservingImages
 } from '../services/storageService'
 import { bookBlitzshipShipment } from '../services/blitzshipService'
 
@@ -94,10 +95,20 @@ export function useRealtimeBackend(initialProducts: DBProduct[], initialReviews:
     if (typeof window !== 'undefined') {
       try {
         const saved = localStorage.getItem('arovia_wishlist_ids')
-        if (saved) return JSON.parse(saved)
+        if (saved) {
+          const parsed = JSON.parse(saved)
+          if (Array.isArray(parsed)) {
+            // Clear old hardcoded default [1, 5] if present
+            if (parsed.length === 2 && parsed.includes(1) && parsed.includes(5)) {
+              localStorage.setItem('arovia_wishlist_ids', JSON.stringify([]))
+              return []
+            }
+            return parsed
+          }
+        }
       } catch (e) {}
     }
-    return [1, 5]
+    return []
   })
   const [orders, setOrders] = useState<DBOrder[]>([])
   const [payments, setPayments] = useState<DBPayment[]>([])
@@ -134,7 +145,9 @@ export function useRealtimeBackend(initialProducts: DBProduct[], initialReviews:
     loadStorage()
 
     const unsubProducts = onBroadcastEvent('arovia_products_updated', (prods) => {
-      if (Array.isArray(prods)) setProducts(prods)
+      if (Array.isArray(prods)) {
+        setProducts(prev => mergeProductsPreservingImages(prev, prods))
+      }
     })
     const unsubCategories = onBroadcastEvent('arovia_categories_updated', (cats) => {
       if (Array.isArray(cats)) setCategories(cats)
@@ -143,7 +156,10 @@ export function useRealtimeBackend(initialProducts: DBProduct[], initialReviews:
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'arovia_products' && e.newValue) {
         try {
-          setProducts(JSON.parse(e.newValue))
+          const incoming = JSON.parse(e.newValue)
+          if (Array.isArray(incoming)) {
+            setProducts(prev => mergeProductsPreservingImages(prev, incoming))
+          }
         } catch (err) {}
       }
       if (e.key === 'arovia_categories' && e.newValue) {
@@ -189,12 +205,18 @@ export function useRealtimeBackend(initialProducts: DBProduct[], initialReviews:
           const map = new Map<number, DBProduct>()
           // 1. Put dbProds
           dbProds.forEach(p => map.set(Number(p.id), p))
-          // 2. Put localStoredProds over dbProds (local changes take priority)
+          // 2. Put localStoredProds over dbProds (local changes take priority, preserving images)
           if (localStoredProds && localStoredProds.length > 0) {
-            localStoredProds.forEach(p => map.set(Number(p.id), p))
+            localStoredProds.forEach(p => {
+              const existing = map.get(Number(p.id))
+              map.set(Number(p.id), existing ? mergeProductsPreservingImages([existing], [p])[0] : p)
+            })
           }
-          // 3. Put current prev state over dbProds
-          prev.forEach(p => map.set(Number(p.id), p))
+          // 3. Put current prev state over dbProds, preserving rich galleries
+          prev.forEach(p => {
+            const existing = map.get(Number(p.id))
+            map.set(Number(p.id), existing ? mergeProductsPreservingImages([existing], [p])[0] : p)
+          })
 
           const merged = Array.from(map.values())
           saveStoredProducts(merged)
@@ -769,19 +791,36 @@ export function useRealtimeBackend(initialProducts: DBProduct[], initialReviews:
     logActivity(`Bulk deleted ${productIds.length} products`)
   }, [configured])
 
-  const bulkAttachImages = useCallback(async (productIds: number[], newImages: string[], setAsThumbnail: boolean = false) => {
+  const bulkAttachImages = useCallback(async (
+    productIds: number[],
+    newImages: string[],
+    setAsThumbnail: boolean = false,
+    distributeOneToOne: boolean = false
+  ) => {
     let nextProducts: DBProduct[] = []
     setProducts(prev => {
       nextProducts = prev.map(p => {
-        if (productIds.includes(p.id)) {
-          const existingImages = Array.isArray(p.images) ? p.images : [p.imgId].filter(Boolean)
-          const merged = Array.from(new Set([...newImages, ...existingImages]))
-          const nextImgId = setAsThumbnail && newImages[0] ? newImages[0] : (p.imgId || newImages[0] || '')
-          return sanitizeProduct({
-            ...p,
-            imgId: nextImgId,
-            images: merged
-          })
+        const pIdx = productIds.indexOf(p.id)
+        if (pIdx >= 0) {
+          if (distributeOneToOne && newImages[pIdx]) {
+            const assignedPhoto = newImages[pIdx]
+            const existingImages = (Array.isArray(p.images) ? p.images : [p.imgId]).filter(Boolean)
+            const merged = [assignedPhoto, ...existingImages.filter(u => u !== assignedPhoto)]
+            return sanitizeProduct({
+              ...p,
+              imgId: assignedPhoto,
+              images: merged
+            })
+          } else {
+            const existingImages = Array.isArray(p.images) ? p.images : [p.imgId].filter(Boolean)
+            const merged = Array.from(new Set([...newImages, ...existingImages]))
+            const nextImgId = setAsThumbnail && newImages[0] ? newImages[0] : (p.imgId || newImages[0] || '')
+            return sanitizeProduct({
+              ...p,
+              imgId: nextImgId,
+              images: merged
+            })
+          }
         }
         return p
       })

@@ -6,6 +6,9 @@ import { LIVE_PRODUCTS } from './services/catalogData'
 const AdminPanel = lazy(() => import('./components/AdminPanel'))
 const SizeGuideModal = lazy(() => import('./components/SizeGuideModal'))
 const TrackingModal = lazy(() => import('./components/TrackingModal'))
+const InfoModal = lazy(() => import('./components/InfoModal'))
+const AdminAuthModal = lazy(() => import('./components/AdminAuthModal'))
+import type { InfoModalType } from './components/InfoModal'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 type Page = 'home' | 'pdp' | 'collection' | 'cart' | 'admin'
@@ -664,9 +667,12 @@ function Navigation({
 
             {/* Center Brand Logo */}
             <div className="flex-1 lg:flex-none flex justify-center lg:justify-center lg:absolute lg:left-1/2 lg:-translate-x-1/2">
-              <button onClick={() => onPageChange('home')} className="text-2xl font-black tracking-[0.15em] flex items-center gap-1.5">
-                <span className="bg-black text-white px-2 py-0.5 text-xl font-black tracking-wider">AROVIA</span>
-                <span className="font-extrabold tracking-[0.2em] text-gray-900 text-xl">FIT</span>
+              <button onClick={() => onPageChange('home')} className="flex items-center gap-2 group py-1" aria-label="Arovia Fit Home">
+                <img
+                  src="/arovia-logo.png"
+                  alt="Arovia Fit"
+                  className="h-11 md:h-12 w-auto object-contain transition-transform duration-200 group-hover:scale-105"
+                />
               </button>
             </div>
 
@@ -1099,9 +1105,8 @@ function OrderInvoiceReceipt({
     <div className="max-w-2xl mx-auto my-12 p-8 bg-white border border-gray-200 shadow-sm rounded-lg">
       <div className="flex justify-between items-start border-b border-gray-100 pb-6">
         <div>
-          <div className="flex items-center gap-1.5 mb-1">
-            <span className="bg-black text-white px-2 py-0.5 text-sm font-black">AROVIA</span>
-            <span className="font-bold text-sm tracking-wider">FIT</span>
+          <div className="flex items-center gap-2 mb-1">
+            <img src="/arovia-logo.png" alt="Arovia Fit" className="h-9 w-auto object-contain" />
           </div>
           <p className="text-[11px] text-gray-400">Direct-To-Consumer Activewear India</p>
         </div>
@@ -2675,67 +2680,106 @@ function CartPage({
 // ─── Footer ───────────────────────────────────────────────────────────────────
 function Footer({
   onPageChange,
-  onTrackOrderOpen
+  onCategorySelect,
+  onOpenInfo,
+  onOpenSizeGuide,
+  onRequestAdmin,
+  onShowToast
 }: {
   onPageChange: (p: Page) => void
-  onTrackOrderOpen?: () => void
+  onCategorySelect?: (c: string) => void
+  onOpenInfo?: (type: InfoModalType) => void
+  onOpenSizeGuide?: () => void
+  onRequestAdmin?: () => void
+  onShowToast?: (msg: string) => void
 }) {
+  const [email, setEmail] = useState('')
+
+  const handleSubscribe = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!email || !email.includes('@')) {
+      onShowToast?.('Please enter a valid email address.')
+      return
+    }
+    try {
+      const subs = JSON.parse(localStorage.getItem('arovia_subscribers') || '[]')
+      if (!subs.includes(email)) {
+        subs.push(email)
+        localStorage.setItem('arovia_subscribers', JSON.stringify(subs))
+      }
+    } catch (err) {}
+    setEmail('')
+    onShowToast?.('🎉 Subscribed! Use code WELCOME10 for 10% off your order.')
+  }
+
   return (
     <footer className="bg-black text-white pt-16 pb-12 border-t border-gray-900 mt-20">
       <div className="max-w-screen-xl mx-auto px-4 md:px-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-8 mb-10 border-b border-gray-800 gap-4">
+          <div className="flex items-center gap-3">
+            <div className="bg-white rounded-lg p-1.5 shadow-sm">
+              <img src="/arovia-logo.png" alt="Arovia Fit" className="h-10 w-auto object-contain" />
+            </div>
+            <div>
+              <p className="text-sm font-black tracking-widest text-white">AROVIA FIT</p>
+              <p className="text-[10px] tracking-widest text-gray-400 uppercase">Comfort Meets Style</p>
+            </div>
+          </div>
+          <p className="text-xs text-gray-400 max-w-sm">Premium 4-way stretch activewear engineered in India for ultimate comfort, movement & style.</p>
+        </div>
+
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
           <div>
             <p className="text-xs font-bold tracking-widest text-gray-400 mb-4">SHOP</p>
             <ul className="space-y-2 text-xs text-gray-400">
-              <li><button onClick={() => onPageChange('collection')} className="hover:text-white transition-colors">All Bottoms</button></li>
-              <li><button onClick={() => onPageChange('collection')} className="hover:text-white transition-colors">Sports Bras</button></li>
-              <li><button onClick={() => onPageChange('collection')} className="hover:text-white transition-colors">Crop Tops</button></li>
-              <li><button onClick={() => onPageChange('collection')} className="hover:text-white transition-colors">Travel Collection</button></li>
-              <li><button onClick={() => onPageChange('collection')} className="hover:text-white transition-colors">Swimwear</button></li>
+              <li><button onClick={() => onCategorySelect ? onCategorySelect('Bottoms') : onPageChange('collection')} className="hover:text-white transition-colors text-left">All Bottoms</button></li>
+              <li><button onClick={() => onCategorySelect ? onCategorySelect('Sports Bras') : onPageChange('collection')} className="hover:text-white transition-colors text-left">Sports Bras</button></li>
+              <li><button onClick={() => onCategorySelect ? onCategorySelect('Tops') : onPageChange('collection')} className="hover:text-white transition-colors text-left">Crop Tops</button></li>
+              <li><button onClick={() => onCategorySelect ? onCategorySelect('Travel') : onPageChange('collection')} className="hover:text-white transition-colors text-left">Travel Collection</button></li>
+              <li><button onClick={() => onCategorySelect ? onCategorySelect('Swimwear') : onPageChange('collection')} className="hover:text-white transition-colors text-left">Swimwear</button></li>
             </ul>
           </div>
           <div>
             <p className="text-xs font-bold tracking-widest text-gray-400 mb-4">CUSTOMER CARE</p>
             <ul className="space-y-2 text-xs text-gray-400">
-              <li>
-                <button
-                  onClick={onTrackOrderOpen}
-                  className="hover:text-white transition-colors text-left flex items-center gap-1.5"
-                >
-                  <span className="text-emerald-400">⚡</span> Live Track Order (BlitzShipz)
-                </button>
-              </li>
-              <li><a href="#" className="hover:text-white transition-colors">Returns & Exchange</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Shipping Policy</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Size Guide</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Contact Support</a></li>
+              <li><button onClick={() => onOpenInfo?.('returns')} className="hover:text-white transition-colors text-left">Returns & Exchange</button></li>
+              <li><button onClick={() => onOpenInfo?.('shipping')} className="hover:text-white transition-colors text-left">Shipping Policy</button></li>
+              <li><button onClick={() => onOpenSizeGuide ? onOpenSizeGuide() : onOpenInfo?.('fabric')} className="hover:text-white transition-colors text-left">Size Guide</button></li>
+              <li><button onClick={() => onOpenInfo?.('contact')} className="hover:text-white transition-colors text-left">Contact Support</button></li>
             </ul>
           </div>
           <div>
             <p className="text-xs font-bold tracking-widest text-gray-400 mb-4">ABOUT AROVIA FIT</p>
             <ul className="space-y-2 text-xs text-gray-400">
-              <li><a href="#" className="hover:text-white transition-colors">Our Story</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Fabric Innovation</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Sustainability</a></li>
-              <li><button onClick={() => onPageChange('admin')} className="text-blue-400 hover:text-blue-300">Admin Control Portal</button></li>
+              <li><button onClick={() => onOpenInfo?.('story')} className="hover:text-white transition-colors text-left">Our Story</button></li>
+              <li><button onClick={() => onOpenInfo?.('fabric')} className="hover:text-white transition-colors text-left">Fabric Innovation</button></li>
+              <li><button onClick={() => onOpenInfo?.('sustainability')} className="hover:text-white transition-colors text-left">Sustainability</button></li>
+              <li><button onClick={() => onRequestAdmin ? onRequestAdmin() : onPageChange('admin')} className="text-blue-400 hover:text-blue-300 text-left font-semibold">Admin Control Portal</button></li>
             </ul>
           </div>
           <div>
             <p className="text-xs font-bold tracking-widest text-gray-400 mb-4">NEWSLETTER</p>
             <p className="text-xs text-gray-400 mb-3">Sign up for early access to drops and exclusive offers.</p>
-            <div className="flex">
-              <input type="email" placeholder="Enter your email" className="bg-gray-900 text-xs px-3 py-2.5 rounded-l w-full focus:outline-none" />
-              <button className="bg-white text-black text-xs font-bold px-4 rounded-r hover:bg-gray-200">JOIN</button>
-            </div>
+            <form onSubmit={handleSubscribe} className="flex">
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="Enter your email"
+                className="bg-gray-900 text-xs px-3 py-2.5 rounded-l w-full focus:outline-none border border-gray-800 text-white placeholder-gray-500"
+                required
+              />
+              <button type="submit" className="bg-white text-black text-xs font-bold px-4 rounded-r hover:bg-gray-200 transition-colors">JOIN</button>
+            </form>
           </div>
         </div>
 
         <div className="border-t border-gray-900 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-gray-500">
           <p>© 2026 AROVIA FIT INDIA PVT. LTD. ALL RIGHTS RESERVED.</p>
           <div className="flex gap-4">
-            <a href="#" className="hover:text-white">Privacy Policy</a>
-            <a href="#" className="hover:text-white">Terms of Service</a>
-            <a href="#" className="hover:text-white">Refund Policy</a>
+            <button onClick={() => onOpenInfo?.('privacy')} className="hover:text-white transition-colors">Privacy Policy</button>
+            <button onClick={() => onOpenInfo?.('terms')} className="hover:text-white transition-colors">Terms of Service</button>
+            <button onClick={() => onOpenInfo?.('refund')} className="hover:text-white transition-colors">Refund Policy</button>
           </div>
         </div>
       </div>
@@ -2752,7 +2796,11 @@ export default function App() {
     const params = new URLSearchParams(window.location.search)
     const p = params.get('page')?.toLowerCase()
 
-    if (hash === 'admin' || path === 'admin' || p === 'admin') return 'admin'
+    if (hash === 'admin' || path === 'admin' || p === 'admin') {
+      const isAuthed = sessionStorage.getItem('arovia_admin_auth') === 'true'
+      if (isAuthed) return 'admin'
+      return 'home'
+    }
     if (hash === 'cart' || path === 'cart' || p === 'cart') return 'cart'
     if (hash === 'collection' || path === 'collection' || p === 'collection') return 'collection'
     if (hash === 'pdp' || path === 'pdp' || p === 'pdp') return 'pdp'
@@ -2769,6 +2817,9 @@ export default function App() {
   const [toastMsg, setToastMsg] = useState<string | null>(null)
   const [trackModalOpen, setTrackModalOpen] = useState(false)
   const [trackInitialOrder, setTrackInitialOrder] = useState<DBOrder | undefined>(undefined)
+  const [adminAuthModalOpen, setAdminAuthModalOpen] = useState(false)
+  const [infoModalType, setInfoModalType] = useState<InfoModalType | null>(null)
+  const [globalSizeGuideOpen, setGlobalSizeGuideOpen] = useState(false)
 
   const showToast = (msg: string) => {
     setToastMsg(msg)
@@ -2896,7 +2947,13 @@ export default function App() {
 
       const isAdmin = hash === 'admin' || path === 'admin' || p === 'admin'
       if (isAdmin) {
-        setPage('admin')
+        const isAuthed = sessionStorage.getItem('arovia_admin_auth') === 'true'
+        if (isAuthed) {
+          setPage('admin')
+        } else {
+          setPage('home')
+          setAdminAuthModalOpen(true)
+        }
       } else if (hash === 'cart' || path === 'cart' || p === 'cart') {
         setPage('cart')
       } else if (hash === 'collection' || path === 'collection' || p === 'collection') {
@@ -2936,6 +2993,13 @@ export default function App() {
   }, [productsList])
 
   const navigateTo = (targetPage: Page, opts?: { productId?: number; category?: string; search?: string }) => {
+    if (targetPage === 'admin') {
+      const isAuthed = typeof window !== 'undefined' && sessionStorage.getItem('arovia_admin_auth') === 'true'
+      if (!isAuthed) {
+        setAdminAuthModalOpen(true)
+        return
+      }
+    }
     setPage(targetPage)
     if (opts?.productId !== undefined) {
       const prod = productsList.find(p => p.id === opts.productId)
@@ -3216,8 +3280,61 @@ export default function App() {
       {page !== 'admin' && (
         <Footer
           onPageChange={navigateTo}
-          onTrackOrderOpen={() => handleOpenTracker()}
+          onCategorySelect={handleCategorySelect}
+          onOpenInfo={t => setInfoModalType(t)}
+          onOpenSizeGuide={() => setGlobalSizeGuideOpen(true)}
+          onRequestAdmin={() => {
+            const isAuthed = typeof window !== 'undefined' && sessionStorage.getItem('arovia_admin_auth') === 'true'
+            if (isAuthed) {
+              navigateTo('admin')
+            } else {
+              setAdminAuthModalOpen(true)
+            }
+          }}
+          onShowToast={showToast}
         />
+      )}
+
+      {/* Footer Interactive Info Modal */}
+      {infoModalType && (
+        <Suspense fallback={null}>
+          <InfoModal
+            type={infoModalType}
+            onClose={() => setInfoModalType(null)}
+          />
+        </Suspense>
+      )}
+
+      {/* Admin Password Authentication Modal */}
+      {adminAuthModalOpen && (
+        <Suspense fallback={null}>
+          <AdminAuthModal
+            open={adminAuthModalOpen}
+            onSuccess={() => {
+              setAdminAuthModalOpen(false)
+              setPage('admin')
+              if (typeof window !== 'undefined') {
+                window.location.hash = '#admin'
+              }
+              showToast('Admin Portal Unlocked')
+            }}
+            onCancel={() => {
+              setAdminAuthModalOpen(false)
+              if (page === 'admin') navigateTo('home')
+            }}
+          />
+        </Suspense>
+      )}
+
+      {/* Global Size Guide Modal */}
+      {globalSizeGuideOpen && (
+        <Suspense fallback={null}>
+          <SizeGuideModal
+            open={globalSizeGuideOpen}
+            onClose={() => setGlobalSizeGuideOpen(false)}
+            category="Bottoms"
+          />
+        </Suspense>
       )}
 
       {/* Live BlitzShipz Realtime Tracking Modal */}

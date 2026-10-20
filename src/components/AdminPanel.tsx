@@ -140,7 +140,7 @@ export interface AdminPanelProps {
   onBulkUpdateBadge?: (productIds: number[], badge: string) => Promise<void> | void
   onBulkUpdatePrice?: (productIds: number[], percentOrPrice: number, mode?: 'fixed' | 'percent_discount' | 'percent_increase') => Promise<void> | void
   onBulkDeleteProducts?: (productIds: number[]) => Promise<void> | void
-  onBulkAttachImages?: (productIds: number[], images: string[], setAsThumbnail?: boolean) => Promise<void> | void
+  onBulkAttachImages?: (productIds: number[], images: string[], setAsThumbnail?: boolean, distributeOneToOne?: boolean) => Promise<void> | void
   onAddCategory?: (name: string, subCategories?: string[]) => Promise<void> | void
   onUpdateCategory?: (oldName: string, newName: string, subCategories: string[]) => Promise<void> | void
   onDeleteCategory?: (name: string) => Promise<void> | void
@@ -309,24 +309,29 @@ export default function AdminPanel({
 
   const handleSingleProductPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0 || !singlePhotoTargetId) return
-    const file = e.target.files[0]
+    const fileArray = Array.from(e.target.files).filter(f => f.type.startsWith('image/'))
+    if (fileArray.length === 0) return
     const targetProd = products.find(p => p.id === singlePhotoTargetId)
     if (!targetProd) return
 
-    showToast(`Uploading photo for "${targetProd.name}"...`)
+    showToast(`Uploading ${fileArray.length} photo(s) for "${targetProd.name}"...`)
     try {
-      const url = await uploadImageToSupabase(file)
-      if (isValidImg(url)) {
-        const existingImgs = (targetProd.images || [targetProd.imgId]).filter(isValidImg)
-        const updatedImgs = [url, ...existingImgs.filter(u => u !== url)]
+      const urls = await uploadMultipleImages(fileArray)
+      const validUrls = urls.filter(isValidImg)
+      if (validUrls.length > 0) {
+        const existingImgs = (Array.isArray(targetProd.images) && targetProd.images.length > 0
+          ? targetProd.images
+          : (isValidImg(targetProd.imgId) ? [targetProd.imgId] : [])
+        ).filter(isValidImg)
+        const updatedImgs = [...validUrls, ...existingImgs.filter(u => !validUrls.includes(u))]
         const updatedProd: DBProduct = {
           ...targetProd,
-          imgId: url,
+          imgId: validUrls[0],
           images: updatedImgs
         }
         onSaveProduct(updatedProd)
         if (soundEnabled) playNotificationSound('success')
-        showToast(`✓ Photo updated for "${targetProd.name}"!`)
+        showToast(`✓ Added ${validUrls.length} photo(s) to "${targetProd.name}"!`)
       }
     } catch (err: any) {
       showToast(`Upload failed: ${err.message}`)
@@ -580,15 +585,17 @@ export default function AdminPanel({
     setShowBulkDeleteModal(false)
   }
 
-  const handleExecuteBulkAttachPhotos = async () => {
+  const handleExecuteBulkAttachPhotos = async (distributeOneToOne: boolean = false) => {
     if (selectedPhotoUrls.length === 0) {
       showToast('Please select at least 1 photo from Studio')
       return
     }
     if (onBulkAttachImages && selectedProductIds.length > 0) {
-      await onBulkAttachImages(selectedProductIds, selectedPhotoUrls, false)
+      await onBulkAttachImages(selectedProductIds, selectedPhotoUrls, false, distributeOneToOne)
       if (soundEnabled) playNotificationSound('success')
-      showToast(`📸 Attached ${selectedPhotoUrls.length} images to ${selectedProductIds.length} items`)
+      showToast(distributeOneToOne
+        ? `🎯 Matched 1 photo to each of ${selectedProductIds.length} items!`
+        : `📸 Attached ${selectedPhotoUrls.length} images to ${selectedProductIds.length} items`)
     }
     setShowBulkAttachPhotosModal(false)
   }
@@ -654,6 +661,40 @@ export default function AdminPanel({
     setActiveTab('inventory')
   }
 
+  const handleCreateMultipleProductsFromPhotos = async () => {
+    if (selectedPhotoUrls.length === 0) {
+      showToast('Select photos from Studio first')
+      return
+    }
+    const firstCat = categories[0]?.name || 'Bottoms'
+    const firstSubCat = categories[0]?.subCategories[0] || 'Flare Pants'
+    const now = Date.now()
+    const newProducts: DBProduct[] = selectedPhotoUrls.map((url, idx) => ({
+      id: now + idx,
+      name: `New Arovia SKU #${now + idx}`,
+      price: 1299,
+      mrp: 1999,
+      rating: 5.0,
+      reviews: 0,
+      badge: 'NEW',
+      imgId: url,
+      images: [url],
+      colors: ['#111111', '#6b7280'],
+      category: firstCat,
+      subCategory: firstSubCat,
+      sub_category: firstSubCat,
+      description: 'Engineered with ultra-premium 4-way Italian stretch fabric for zero-distraction movement.',
+      stock: 100
+    }))
+
+    for (const p of newProducts) {
+      onSaveProduct(p)
+    }
+    if (soundEnabled) playNotificationSound('success')
+    showToast(`⚡ Created ${newProducts.length} separate product SKUs!`)
+    setSelectedPhotoUrls([])
+  }
+
   // ─── Category Hub Handlers ──────────────────────────────────────────────────
   const handleSaveNewCategory = () => {
     if (!newCategoryInput.trim()) return
@@ -693,7 +734,7 @@ export default function AdminPanel({
   // ─── Product Form Helpers ───────────────────────────────────────────────────
   const handleModalPhotoUpload = async (files: FileList | File[]) => {
     const fileArray = Array.from(files).filter(f => f.type.startsWith('image/'))
-    if (fileArray.length === 0 || !editingProd) return
+    if (fileArray.length === 0) return
 
     setIsModalUploadingPhoto(true)
     setModalUploadProgressText(`Uploading ${fileArray.length} photo(s)...`)
@@ -703,18 +744,26 @@ export default function AdminPanel({
         setModalUploadProgressText(`Uploading ${done} / ${total} photo(s)...`)
       })
 
-      if (urls.length > 0) {
-        const existingImgs = (editingProd.images || [editingProd.imgId]).filter(isValidImg)
-        const updatedImgs = [...existingImgs, ...urls]
-        const mainCover = isValidImg(editingProd.imgId) ? editingProd.imgId : urls[0]
-        setEditingProd({
-          ...editingProd,
-          images: updatedImgs,
-          imgId: mainCover || urls[0]
+      const validUrls = urls.filter(isValidImg)
+      if (validUrls.length > 0) {
+        setEditingProd(prev => {
+          if (!prev) return null
+          const existingImgs = (Array.isArray(prev.images) && prev.images.length > 0
+            ? prev.images
+            : (isValidImg(prev.imgId) ? [prev.imgId] : [])
+          ).filter(isValidImg)
+          const newUnique = validUrls.filter(u => !existingImgs.includes(u))
+          const updatedImgs = [...existingImgs, ...newUnique]
+          const mainCover = isValidImg(prev.imgId) ? prev.imgId : (updatedImgs[0] || '')
+          return {
+            ...prev,
+            images: updatedImgs,
+            imgId: mainCover
+          }
         })
 
         // Also add to studio uploadedPhotos cache
-        const newPhotoObjects = urls.map((url, idx) => ({
+        const newPhotoObjects = validUrls.map((url, idx) => ({
           id: `upl_${Date.now()}_${idx}`,
           url,
           name: fileArray[idx]?.name || `Upload ${idx + 1}`,
@@ -723,13 +772,16 @@ export default function AdminPanel({
         setUploadedPhotos(prev => [...newPhotoObjects, ...prev])
 
         if (soundEnabled) playNotificationSound('success')
-        showToast(`⚡ Added ${urls.length} photo(s) to product!`)
+        showToast(`⚡ Added ${validUrls.length} photo(s) to SKU gallery!`)
       }
     } catch (err: any) {
       showToast(`Upload failed: ${err.message}`)
     } finally {
       setIsModalUploadingPhoto(false)
       setModalUploadProgressText('')
+      if (modalFileInputRef.current) {
+        modalFileInputRef.current.value = ''
+      }
     }
   }
 
@@ -768,7 +820,10 @@ export default function AdminPanel({
       onAddSubCategory(effectiveCat, effectiveSubCat)
     }
 
-    const validImages = (editingProd.images || [editingProd.imgId]).filter(isValidImg)
+    const validImages = (Array.isArray(editingProd.images) && editingProd.images.length > 0
+      ? editingProd.images
+      : (isValidImg(editingProd.imgId) ? [editingProd.imgId] : [])
+    ).filter(isValidImg)
     const primaryImg = (isValidImg(editingProd.imgId) ? editingProd.imgId : validImages[0]) || ''
 
     const finalProd: DBProduct = {
@@ -848,9 +903,11 @@ export default function AdminPanel({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
           {/* Brand & Connection State */}
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span className="bg-white text-black font-black text-xs px-2.5 py-1 rounded-sm tracking-widest">AROVIA</span>
-              <span className="font-extrabold text-sm tracking-wider text-zinc-100">FIT</span>
+            <div className="flex items-center gap-2.5">
+              <div className="bg-white rounded p-1 shadow-xs">
+                <img src="/arovia-logo.png" alt="Arovia Fit" className="h-6 w-auto object-contain" />
+              </div>
+              <span className="font-extrabold text-sm tracking-wider text-zinc-100 hidden sm:inline">OPERATIONS</span>
               <span className="bg-zinc-800 text-zinc-300 text-[10px] font-mono px-2 py-0.5 rounded border border-zinc-700">REALTIME CONTROL</span>
             </div>
 
@@ -1723,6 +1780,7 @@ export default function AdminPanel({
                   <input
                     ref={singleProductPhotoInputRef}
                     type="file"
+                    multiple
                     accept="image/*"
                     onChange={handleSingleProductPhotoUpload}
                     className="hidden"
@@ -1819,19 +1877,41 @@ export default function AdminPanel({
                       onClick={handleCreateProductFromSelectedPhotos}
                       className="bg-black text-white font-bold px-3 py-1.5 rounded-lg hover:bg-zinc-800 transition-colors flex items-center gap-1.5"
                     >
-                      <span>➕ Create New SKU</span>
+                      <span>➕ Create 1 SKU with Gallery ({selectedPhotoUrls.length})</span>
                     </button>
-                    {selectedProductIds.length > 0 && (
+                    {selectedPhotoUrls.length > 1 && (
                       <button
-                        onClick={() => {
-                          if (window.confirm(`Attach selected photo(s) to ${selectedProductIds.length} products?`)) {
-                            handleExecuteBulkAttachPhotos()
-                          }
-                        }}
-                        className="bg-purple-600 text-white font-bold px-3 py-1.5 rounded-lg hover:bg-purple-700 transition-colors"
+                        onClick={handleCreateMultipleProductsFromPhotos}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
                       >
-                        <span>🔗 Attach to {selectedProductIds.length} Selected</span>
+                        <span>⚡ Create {selectedPhotoUrls.length} Separate SKUs</span>
                       </button>
+                    )}
+                    {selectedProductIds.length > 0 && (
+                      <>
+                        <button
+                          onClick={() => {
+                            if (window.confirm(`Attach selected photo(s) as gallery to ${selectedProductIds.length} products?`)) {
+                              handleExecuteBulkAttachPhotos(false)
+                            }
+                          }}
+                          className="bg-purple-600 text-white font-bold px-3 py-1.5 rounded-lg hover:bg-purple-700 transition-colors"
+                        >
+                          <span>🔗 Attach to {selectedProductIds.length} Selected</span>
+                        </button>
+                        {selectedPhotoUrls.length === selectedProductIds.length && (
+                          <button
+                            onClick={() => {
+                              if (window.confirm(`Assign 1 distinct photo to each of the ${selectedProductIds.length} selected products (1-to-1 match)?`)) {
+                                handleExecuteBulkAttachPhotos(true)
+                              }
+                            }}
+                            className="bg-indigo-600 text-white font-bold px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition-colors"
+                          >
+                            <span>🎯 1-to-1 Match ({selectedProductIds.length} Photos)</span>
+                          </button>
+                        )}
+                      </>
                     )}
                     <button
                       onClick={() => setSelectedPhotoUrls([])}
@@ -2627,9 +2707,9 @@ export default function AdminPanel({
               <div className="sm:col-span-2 space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold text-zinc-700">
-                    Product Photos Gallery ({((editingProd.images || [editingProd.imgId]).filter(Boolean)).length})
+                    Product Photos Gallery ({((Array.isArray(editingProd.images) && editingProd.images.length > 0 ? editingProd.images : (isValidImg(editingProd.imgId) ? [editingProd.imgId] : [])).filter(isValidImg)).length})
                   </label>
-                  <span className="text-[11px] text-zinc-400">First photo or selected is cover</span>
+                  <span className="text-[11px] text-zinc-400">First photo or selected is cover • Drag & drop photos anywhere</span>
                 </div>
 
                 {/* Hidden File Input for Device Photo Upload */}
@@ -2646,9 +2726,21 @@ export default function AdminPanel({
                   className="hidden"
                 />
 
-                {/* Thumbnails Display */}
-                <div className="flex flex-wrap gap-2 items-center">
-                  {((editingProd.images || [editingProd.imgId]).filter(isValidImg)).map((imgUri, idx) => (
+                {/* Thumbnails Display & Drop Zone */}
+                <div
+                  onDragOver={e => e.preventDefault()}
+                  onDrop={e => {
+                    e.preventDefault()
+                    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                      handleModalPhotoUpload(e.dataTransfer.files)
+                    }
+                  }}
+                  className="flex flex-wrap gap-2 items-center p-2.5 bg-zinc-50 rounded-xl border border-dashed border-zinc-300 min-h-[96px]"
+                >
+                  {((Array.isArray(editingProd.images) && editingProd.images.length > 0
+                    ? editingProd.images
+                    : (isValidImg(editingProd.imgId) ? [editingProd.imgId] : [])
+                  ).filter(isValidImg)).map((imgUri, idx) => (
                     <div key={idx} className="relative w-16 h-20 bg-zinc-100 rounded-lg overflow-hidden border border-zinc-300 group shadow-xs">
                       <img
                         src={imgUrl(imgUri, 100, 120)}
@@ -2662,23 +2754,29 @@ export default function AdminPanel({
                       <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1">
                         <button
                           type="button"
-                          onClick={() => setEditingProd({ ...editingProd, imgId: imgUri })}
-                          className="text-[9px] bg-white text-black font-bold px-1.5 py-0.5 rounded shadow"
+                          onClick={() => setEditingProd(prev => prev ? ({ ...prev, imgId: imgUri }) : null)}
+                          className="text-[9px] bg-white text-black font-bold px-1.5 py-0.5 rounded shadow cursor-pointer"
                         >
                           Cover
                         </button>
                         <button
                           type="button"
                           onClick={() => {
-                            const currentImgs = (editingProd.images || [editingProd.imgId]).filter(isValidImg)
-                            const newImgs = currentImgs.filter(u => u !== imgUri)
-                            setEditingProd({
-                              ...editingProd,
-                              images: newImgs,
-                              imgId: editingProd.imgId === imgUri ? (newImgs[0] || '') : editingProd.imgId
+                            setEditingProd(prev => {
+                              if (!prev) return null
+                              const currentImgs = (Array.isArray(prev.images) && prev.images.length > 0
+                                ? prev.images
+                                : (isValidImg(prev.imgId) ? [prev.imgId] : [])
+                              ).filter(isValidImg)
+                              const newImgs = currentImgs.filter(u => u !== imgUri)
+                              return {
+                                ...prev,
+                                images: newImgs,
+                                imgId: prev.imgId === imgUri ? (newImgs[0] || '') : prev.imgId
+                              }
                             })
                           }}
-                          className="text-[9px] bg-red-600 text-white font-bold px-1.5 py-0.5 rounded shadow"
+                          className="text-[9px] bg-red-600 text-white font-bold px-1.5 py-0.5 rounded shadow cursor-pointer"
                         >
                           ✕
                         </button>
@@ -2691,7 +2789,7 @@ export default function AdminPanel({
                     type="button"
                     onClick={() => modalFileInputRef.current?.click()}
                     disabled={isModalUploadingPhoto}
-                    className="h-20 w-24 border-2 border-dashed border-zinc-300 hover:border-black rounded-lg flex flex-col items-center justify-center gap-1 p-2 bg-zinc-50 hover:bg-zinc-100 transition-colors cursor-pointer text-zinc-600 hover:text-black"
+                    className="h-20 w-28 border-2 border-dashed border-zinc-300 hover:border-black rounded-lg flex flex-col items-center justify-center gap-1 p-2 bg-white hover:bg-zinc-100 transition-colors cursor-pointer text-zinc-600 hover:text-black shrink-0"
                   >
                     {isModalUploadingPhoto ? (
                       <span className="text-[10px] font-bold text-center animate-pulse">⏳ Uploading...</span>
@@ -2718,12 +2816,19 @@ export default function AdminPanel({
                       if (e.key === 'Enter') {
                         e.preventDefault()
                         if (newImageUrlInput.trim()) {
-                          const existing = (editingProd.images || [editingProd.imgId]).filter(Boolean)
-                          const updated = [...existing, newImageUrlInput.trim()]
-                          setEditingProd({
-                            ...editingProd,
-                            images: updated,
-                            imgId: editingProd.imgId || newImageUrlInput.trim()
+                          const toAdd = newImageUrlInput.trim()
+                          setEditingProd(prev => {
+                            if (!prev) return null
+                            const existing = (Array.isArray(prev.images) && prev.images.length > 0
+                              ? prev.images
+                              : (isValidImg(prev.imgId) ? [prev.imgId] : [])
+                            ).filter(isValidImg)
+                            const updated = [...existing, toAdd]
+                            return {
+                              ...prev,
+                              images: updated,
+                              imgId: prev.imgId || toAdd
+                            }
                           })
                           setNewImageUrlInput('')
                         }
@@ -2736,16 +2841,22 @@ export default function AdminPanel({
                     type="button"
                     onClick={() => {
                       if (!newImageUrlInput.trim()) {
-                        // If empty, immediately open the file picker so the button ALWAYS works!
                         modalFileInputRef.current?.click()
                         return
                       }
-                      const existing = (editingProd.images || [editingProd.imgId]).filter(Boolean)
-                      const updated = [...existing, newImageUrlInput.trim()]
-                      setEditingProd({
-                        ...editingProd,
-                        images: updated,
-                        imgId: editingProd.imgId || newImageUrlInput.trim()
+                      const toAdd = newImageUrlInput.trim()
+                      setEditingProd(prev => {
+                        if (!prev) return null
+                        const existing = (Array.isArray(prev.images) && prev.images.length > 0
+                          ? prev.images
+                          : (isValidImg(prev.imgId) ? [prev.imgId] : [])
+                        ).filter(isValidImg)
+                        const updated = [...existing, toAdd]
+                        return {
+                          ...prev,
+                          images: updated,
+                          imgId: prev.imgId || toAdd
+                        }
                       })
                       setNewImageUrlInput('')
                       showToast('✓ Photo added to SKU gallery')
