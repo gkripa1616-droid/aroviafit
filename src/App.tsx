@@ -39,7 +39,7 @@ interface CartItem {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-export const isValidImg = (id: string | undefined | null): boolean => {
+const isValidImg = (id: string | undefined | null): boolean => {
   if (!id || typeof id !== 'string') return false
   if (id.startsWith('data:') && id.length < 200) return false
   return true
@@ -2933,39 +2933,6 @@ export default function App() {
     showToast(`Added "${p.name}" (${size}) to your bag`)
     setCartOpen(true)
   }
-
-  // Auto-sync local browser state to project files on localhost
-  useEffect(() => {
-    if (typeof window === 'undefined' || window.location.hostname !== 'localhost') return
-    const timer = setTimeout(async () => {
-      try {
-        let prods = dbProducts
-        if (window.indexedDB) {
-          const db: IDBDatabase = await new Promise((resolve, reject) => {
-            const req = window.indexedDB.open('arovia_fit_idb', 1)
-            req.onsuccess = () => resolve(req.result)
-            req.onerror = () => reject(req.error)
-          })
-          const idbProds: any[] = await new Promise((resolve) => {
-            const tx = db.transaction('products', 'readonly')
-            const store = tx.objectStore('products')
-            const req = store.getAll()
-            req.onsuccess = () => resolve(req.result || [])
-            req.onerror = () => resolve([])
-          })
-          if (idbProds && idbProds.length > 0) prods = idbProds
-        }
-        if (prods.length > 0 && categories.length > 0) {
-          await fetch('/api/sync-catalog', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ products: prods, categories })
-          })
-        }
-      } catch (e) {}
-    }, 2000)
-    return () => clearTimeout(timer)
-  }, [dbProducts.length, categories.length])
 
   // ─── URL Deep Linking & History Navigation ──────────────────────────────────
   useEffect(() => {

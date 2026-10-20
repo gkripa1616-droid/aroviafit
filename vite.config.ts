@@ -49,7 +49,9 @@ export default defineConfig(({ mode }) => {
       watch: {
         ignored: [
           '**/.figma/**',
-],
+          '**/live_catalog*.json',
+          '**/src/services/catalogData.ts',
+        ],
       },
     },
     preview: {
